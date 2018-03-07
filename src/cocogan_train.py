@@ -12,8 +12,7 @@ from datasets import *
 import sys
 import torchvision
 from itertools import izip
-import tensorboard
-from tensorboard import summary
+import tensorflow as tf
 from optparse import OptionParser
 parser = OptionParser()
 parser.add_option('--gpu', type=int, help="gpu id", default=0)
@@ -49,7 +48,7 @@ def main(argv):
 
   ######################################################################################################################
   # Setup logger and repare image outputs
-  train_writer = tensorboard.FileWriter("%s/%s" % (opts.log,os.path.splitext(os.path.basename(opts.config))[0]))
+  train_writer = tf.summary.FileWriter("%s/%s" % (opts.log,os.path.splitext(os.path.basename(opts.config))[0]))
   image_directory, snapshot_directory = prepare_snapshot_and_image_folder(config.snapshot_prefix, iterations, config.image_save_iterations)
 
   for ep in range(0, MAX_EPOCHS):

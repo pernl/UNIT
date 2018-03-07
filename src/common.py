@@ -5,7 +5,7 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 from datasets import *
 import os
 import torchvision
-from tensorboard import summary
+import tensorflow as tf
 
 def get_data_loader(conf, batch_size):
   dataset = []
@@ -70,8 +70,8 @@ def write_loss(iterations, max_iterations, trainer, train_writer):
   members = [attr for attr in dir(trainer) \
              if not callable(getattr(trainer, attr)) and not attr.startswith("__") and 'loss' in attr]
   for m in members:
-    train_writer.add_summary(summary.scalar(m, getattr(trainer, m)), iterations + 1)
+    train_writer.add_summary(repr(tf.summary.scalar(m, getattr(trainer, m))), iterations + 1) # eventuellt .eval()
   members = [attr for attr in dir(trainer) \
              if not callable(getattr(trainer, attr)) and not attr.startswith("__") and 'acc' in attr]
   for m in members:
-    train_writer.add_summary(summary.scalar(m, getattr(trainer, m)), iterations + 1)
+    train_writer.add_summary(repr(tf.summary.scalar(m, getattr(trainer, m))), iterations + 1)

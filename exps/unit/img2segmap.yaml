@@ -5,7 +5,7 @@ train:
   image_save_iterations: 2500 # How often do you want to save output images during training
   image_display_iterations: 100
   display: 1 # How often do you want to log the training stats
-  snapshot_prefix: ../outputs/unit/street_scene/synthia2cityscape_v01/synthia2cityscape_v01 # Where do you want to save the outputs
+  snapshot_prefix: /staging/dadl/img2segmap/ # Where do you want to save the outputs
   hyperparameters:
     trainer: COCOGANTrainer
     lr: 0.0001             # learning rate
@@ -15,7 +15,7 @@ train:
     kl_cycle_link_w: 0.1  # weight on the cycle L1 reconstruction loss
     gan_w: 10              # weight on the adversarial loss
     batch_size: 1          # image batch size per domain
-    max_iterations: 500000 # maximum number of training epochs
+    max_iterations: 50000 # maximum number of training epochs
     gen:
       name: COCOResGen2
       ch: 64               # base channel number per layer
@@ -36,11 +36,11 @@ train:
       n_layer: 4
   datasets:
     train_a: # Domain 1 dataset
-      channels: 3       # image channel number
+      channels: 1       # image channel number
       scale: 0.47       # scaling factor for scaling image before processing
       crop_image_height: 480 # crop image size
       crop_image_width: 640  # crop image size
-      class_name: dataset_blur_image        # dataset class name
+      class_name: dataset_image        # dataset class name
       root: /staging/dadl/datasets/pix2pixHD/20/train_label/      # dataset folder location
       folder: ./
       list_name: list_gtFine.txt  # image list

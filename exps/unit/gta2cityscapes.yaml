@@ -53,8 +53,8 @@ train:
       crop_image_width: 640  # crop image size
       class_name: dataset_image_remix
       #root: /staging/dadl/datasets/pix2pixHD/20/train_img/
-      root: /staging/dadl/datasets/1/leftImg8bit/train/
-      root_lab: /staging/dadl/datasets/1/gtFine/train/
+      root: /staging/dadl/datasets/100/leftImg8bit/train/
+      root_lab: /staging/dadl/datasets/100/gtFine/train/
       folder: ./
       list_name: list_leftImg8bit.txt
       list_name_lab: list_gtFine.txt

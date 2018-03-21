@@ -52,7 +52,8 @@ def main(argv):
   image_directory, snapshot_directory = prepare_snapshot_and_image_folder(config.snapshot_prefix, iterations, config.image_save_iterations)
 
   for ep in range(0, MAX_EPOCHS):
-    for it, (images_a, images_b) in enumerate(izip(train_loader_a,train_loader_b)):
+    for it, (images_a, data_b) in enumerate(izip(train_loader_a,train_loader_b)):
+      images_b = data_b['data']
       if images_a.size(0) != batch_size or images_b.size(0) != batch_size:
         continue
       images_a = Variable(images_a.cuda(opts.gpu))

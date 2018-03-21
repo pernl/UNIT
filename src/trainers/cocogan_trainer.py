@@ -9,6 +9,8 @@ import torch
 import torch.nn as nn
 import os
 import itertools
+#from projects.pt_semantic_segmentation.lib.enet import ENet
+#from zoo.pytorch.utils import save_checkpoint, wrap_cuda, load_checkpoint
 
 
 class COCOGANTrainer(nn.Module):
@@ -63,11 +65,25 @@ class COCOGANTrainer(nn.Module):
     ll_loss_b = self.ll_loss_criterion_b(x_bb, images_b)
     ll_loss_aba = self.ll_loss_criterion_a(x_aba, images_a)
     ll_loss_bab = self.ll_loss_criterion_b(x_bab, images_b)
+
+    # Trying to include enet stuff
+    # n_classes = 35
+    # model = ENet(n_classes)
+    # checkpoint = load_checkpoint('path_to_checkpoint')
+    # model.load_state_dict(checkpoint['state_dict'])
+    # self._model.cuda()
+    # model.eval()
+    # segm_x_ab = model.forward(x_ab)[0]
+    # segm_x_ba = model.forward(x_ba)[0]
+    # segm_loss_a = nn.functional.binary_cross_entropy(segm_x_ab, segm_gt_a)
+    # segm_loss_b = nn.functional.binary_cross_entropy(segm_x_ba, segm_gt_b)
+
     total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
-                 hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
-                 hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
-                 hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
-                 hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss)
+                  hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
+                  hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
+                  hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
+                  hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss)
+    #              0.1 * (segm_loss_a + segm_loss_b)
     total_loss.backward()
     self.gen_opt.step()
     self.gen_enc_loss = enc_loss.data.cpu().numpy()[0]

@@ -54,6 +54,7 @@ def main(argv):
   for ep in range(0, MAX_EPOCHS):
     for it, (images_a, data_b) in enumerate(izip(train_loader_a,train_loader_b)):
       images_b = data_b['data']
+      labels_b = data_b['data_lab']
       if images_a.size(0) != batch_size or images_b.size(0) != batch_size:
         continue
       images_a = Variable(images_a.cuda(opts.gpu))
@@ -61,7 +62,7 @@ def main(argv):
 
       # Main training code
       trainer.dis_update(images_a, images_b, config.hyperparameters)
-      image_outputs = trainer.gen_update(images_a, images_b, config.hyperparameters)
+      image_outputs = trainer.gen_update(images_a, images_b, config.hyperparameters, labels_b)
       assembled_images = trainer.assemble_outputs(images_a, images_b, image_outputs)
 
       # Dump training stats in log file

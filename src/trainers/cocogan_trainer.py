@@ -9,8 +9,8 @@ import torch
 import torch.nn as nn
 import os
 import itertools
-#from projects.pt_semantic_segmentation.lib.enet import ENet
-#from zoo.pytorch.utils import save_checkpoint, wrap_cuda, load_checkpoint
+from projects.pt_semantic_segmentation.lib.enet import ENet
+from zoo.pytorch.utils import save_checkpoint, wrap_cuda, load_checkpoint
 
 
 class COCOGANTrainer(nn.Module):
@@ -29,6 +29,8 @@ class COCOGANTrainer(nn.Module):
     # Setup the loss function for training
     self.ll_loss_criterion_a = torch.nn.L1Loss()
     self.ll_loss_criterion_b = torch.nn.L1Loss()
+    self.feed_loss = torch.nn.NLLLoss2d(ignore_index=255)
+    #self.feed_loss = torch.nn.CrossEntropyLoss()
 
 
   def _compute_kl(self, mu):
@@ -41,7 +43,7 @@ class COCOGANTrainer(nn.Module):
     encoding_loss = torch.mean(mu_2)
     return encoding_loss
 
-  def gen_update(self, images_a, images_b, hyperparameters):
+  def gen_update(self, images_a, images_b, hyperparameters, labels_b):
     self.gen.zero_grad()
     x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b)
     x_bab, shared_bab = self.gen.forward_a2b(x_ba)
@@ -67,23 +69,30 @@ class COCOGANTrainer(nn.Module):
     ll_loss_bab = self.ll_loss_criterion_b(x_bab, images_b)
 
     # Trying to include enet stuff
-    # n_classes = 35
-    # model = ENet(n_classes)
-    # checkpoint = load_checkpoint('path_to_checkpoint')
-    # model.load_state_dict(checkpoint['state_dict'])
-    # self._model.cuda()
-    # model.eval()
-    # segm_x_ab = model.forward(x_ab)[0]
-    # segm_x_ba = model.forward(x_ba)[0]
-    # segm_loss_a = nn.functional.binary_cross_entropy(segm_x_ab, segm_gt_a)
-    # segm_loss_b = nn.functional.binary_cross_entropy(segm_x_ba, segm_gt_b)
+    n_classes = 19
+    model = wrap_cuda(ENet(n_classes))
+    checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar')
+    model.load_state_dict(checkpoint['state_dict'])
+    model.cuda()
+    model.eval()
+    labels_b_yolo = wrap_cuda(Variable(labels_b, volatile=False))
+    #loss_func = torch.nn.NLLLoss2d(ignore_index=255)
+    #loss_func = wrap_cuda(loss_func)
+    #segm_x_ab = model.forward(x_ab)[0]
+    segm_x_ba = model.forward(x_ba)[0]
+    #segm_loss_a = nn.functional.binary_cross_entropy(segm_x_ab, segm_gt_a)
+    #segm_loss_b = nn.functional.binary_cross_entropy(segm_x_ba, labels_b_yolo)
+    #segm_loss_b = torch.nn.NLLLoss2d(segm_x_ba, labels_b_yolo, ignore_index=255) #Denna "funkar"
+    #segm_loss_b = loss_func(segm_x_ba, labels_b_yolo)
+    segm_loss_b = self.feed_loss(segm_x_ba, labels_b_yolo)
 
-    total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
-                  hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
-                  hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
-                  hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
-                  hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss)
-    #              0.1 * (segm_loss_a + segm_loss_b)
+    # total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
+    #               hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
+    #               hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
+    #               hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
+    #               hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss) + \
+    #               segm_loss_b
+    total_loss = segm_loss_b
     total_loss.backward()
     self.gen_opt.step()
     self.gen_enc_loss = enc_loss.data.cpu().numpy()[0]
@@ -96,6 +105,7 @@ class COCOGANTrainer(nn.Module):
     self.gen_ll_loss_aba = ll_loss_aba.data.cpu().numpy()[0]
     self.gen_ll_loss_bab = ll_loss_bab.data.cpu().numpy()[0]
     self.gen_total_loss = total_loss.data.cpu().numpy()[0]
+    self.gen_segm_loss_b = segm_loss_b.cpu().numpy()[0]
     return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab)
 
   def dis_update(self, images_a, images_b, hyperparameters):

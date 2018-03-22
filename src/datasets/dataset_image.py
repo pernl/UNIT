@@ -73,7 +73,6 @@ class dataset_image_remix(data.Dataset):
     self.labels = [os.path.join(self.root_lab, self.folder, x.strip().split(' ')[0]) for x in content_lab]
     assert len(self.images) == len(self.labels)
     self.dataset_size = len(self.images)
-    print(self.dataset_size)
     self._shuffle_list()
 
   def _shuffle_list(self):
@@ -85,11 +84,10 @@ class dataset_image_remix(data.Dataset):
     self.images, self.labels = zip(*tmp_combined_list)
 
   def __getitem__(self, index):
-    print('PATHS:', self.images[index], self.labels[index])
     crop_img, crop_lab = self._load_one_image_and_lab(self.images[index], self.labels[index])
     raw_data = crop_img.transpose((2, 0, 1))  # convert to HWC
     #raw_lab = crop_lab.transpose((2, 0, 1))
-    data_lab =torch.ByteTensor(crop_lab)
+    data_lab =torch.LongTensor(crop_lab) # Don't acutally need a FloatTensor, Bytetensor should be enough, but enet impl
     data = ((torch.FloatTensor(raw_data)/255.0)-0.5)*2
     sample = {'data': data, 'data_lab': data_lab}
     return sample
@@ -117,8 +115,6 @@ class dataset_image_remix(data.Dataset):
   def _load_one_image_and_lab(self, img_name, lab_name):
     img = cv2.cvtColor(cv2.imread(img_name), cv2.COLOR_BGR2RGB)
     lab = cv2.imread(lab_name, cv2.IMREAD_UNCHANGED)
-    print(lab.shape)
-    print(img.shape)
     if self.scale > 0:
       img = cv2.resize(img, None, fx=self.scale, fy=self.scale)
       lab = cv2.resize(lab, None, fx=self.scale, fy=self.scale, interpolation=cv2.INTER_NEAREST)

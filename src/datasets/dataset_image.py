@@ -7,6 +7,7 @@ import os
 import numpy as np
 import cv2
 import torch
+import random
 import torch.utils.data as data
 
 class dataset_image(data.Dataset):
@@ -70,18 +71,21 @@ class dataset_image_remix(data.Dataset):
       content_lab = f_lab.readlines()
     self.images = [os.path.join(self.root, self.folder, x.strip().split(' ')[0]) for x in content]
     self.labels = [os.path.join(self.root_lab, self.folder, x.strip().split(' ')[0]) for x in content_lab]
-    #self._shuffle_list()
-    #np.random.shuffle(self.images)
     assert len(self.images) == len(self.labels)
     self.dataset_size = len(self.images)
+    print(self.dataset_size)
+    self._shuffle_list()
 
   def _shuffle_list(self):
-    permutation = np.random.permutation(self.dataset_size)
-    self.images = self.images[permutation]
-    self.labels = self.labels[permutation]
+    """Randomise list order while keeping (image, label) pair intact
+    Python wizardry
+    """
+    tmp_combined_list = list(zip(self.images, self.labels))
+    random.shuffle(tmp_combined_list)
+    self.images, self.labels = zip(*tmp_combined_list)
 
   def __getitem__(self, index):
-    print(self.images[index], self.labels[index])
+    print('PATHS:', self.images[index], self.labels[index])
     crop_img, crop_lab = self._load_one_image_and_lab(self.images[index], self.labels[index])
     raw_data = crop_img.transpose((2, 0, 1))  # convert to HWC
     #raw_lab = crop_lab.transpose((2, 0, 1))

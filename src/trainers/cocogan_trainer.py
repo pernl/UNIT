@@ -69,9 +69,10 @@ class COCOGANTrainer(nn.Module):
     ll_loss_bab = self.ll_loss_criterion_b(x_bab, images_b)
 
     # Trying to include enet stuff
-    n_classes = 19
+    n_classes = 35
     model = wrap_cuda(ENet(n_classes))
-    checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar')
+    #checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar') # 19 classes
+    checkpoint = load_checkpoint('/staging/dadl/enet_1epoch.pth.tar')
     model.load_state_dict(checkpoint['state_dict'])
     model.cuda()
     model.eval()
@@ -86,13 +87,13 @@ class COCOGANTrainer(nn.Module):
     #segm_loss_b = loss_func(segm_x_ba, labels_b_yolo)
     segm_loss_b = self.feed_loss(segm_x_ba, labels_b_yolo)
 
-    # total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
-    #               hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
-    #               hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
-    #               hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
-    #               hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss) + \
-    #               segm_loss_b
-    total_loss = segm_loss_b
+    total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
+                 hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
+                 hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
+                 hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
+                 hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss) + \
+                 segm_loss_b
+    #total_loss = segm_loss_b
     total_loss.backward()
     self.gen_opt.step()
     self.gen_enc_loss = enc_loss.data.cpu().numpy()[0]
@@ -105,7 +106,7 @@ class COCOGANTrainer(nn.Module):
     self.gen_ll_loss_aba = ll_loss_aba.data.cpu().numpy()[0]
     self.gen_ll_loss_bab = ll_loss_bab.data.cpu().numpy()[0]
     self.gen_total_loss = total_loss.data.cpu().numpy()[0]
-    self.gen_segm_loss_b = segm_loss_b.cpu().numpy()[0]
+    self.gen_segm_loss_b = segm_loss_b.data.cpu().numpy()[0]
     return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab)
 
   def dis_update(self, images_a, images_b, hyperparameters):

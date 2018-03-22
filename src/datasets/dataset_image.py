@@ -114,7 +114,7 @@ class dataset_image_remix(data.Dataset):
 
   def _load_one_image_and_lab(self, img_name, lab_name):
     img = cv2.cvtColor(cv2.imread(img_name), cv2.COLOR_BGR2RGB)
-    lab = cv2.imread(lab_name, cv2.IMREAD_UNCHANGED)
+    lab = cv2.imread(lab_name, cv2.IMREAD_GRAYSCALE)
     if self.scale > 0:
       img = cv2.resize(img, None, fx=self.scale, fy=self.scale)
       lab = cv2.resize(lab, None, fx=self.scale, fy=self.scale, interpolation=cv2.INTER_NEAREST)

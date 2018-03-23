@@ -72,7 +72,7 @@ class COCOGANTrainer(nn.Module):
     n_classes = 35
     model = wrap_cuda(ENet(n_classes))
     #checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar') # 19 classes
-    checkpoint = load_checkpoint('/staging/dadl/enet_1epoch.pth.tar')
+    checkpoint = load_checkpoint('/staging/dadl/checkpoints/enet_pytorch/20180322_160509/checkpoint.pth.tar')
     model.load_state_dict(checkpoint['state_dict'])
     model.cuda()
     model.eval()
@@ -92,8 +92,7 @@ class COCOGANTrainer(nn.Module):
                  hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
                  hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
                  hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss) + \
-                 segm_loss_b
-    #total_loss = segm_loss_b
+                 10* segm_loss_b
     total_loss.backward()
     self.gen_opt.step()
     self.gen_enc_loss = enc_loss.data.cpu().numpy()[0]

@@ -44,6 +44,7 @@ class COCOGANTrainer(nn.Module):
     x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b)
     x_bab, shared_bab = self.gen.forward_a2b(x_ba)
     x_aba, shared_aba = self.gen.forward_b2a(x_ab)
+    print(shared.cpu().numpy().shape, shared_aba.cpu().numpy().shape, shared_bab.cpu().numpy().shape)
     outs_a, outs_b = self.dis(x_ba,x_ab)
     for it, (out_a, out_b) in enumerate(itertools.izip(outs_a, outs_b)):
       outputs_a = nn.functional.sigmoid(out_a)

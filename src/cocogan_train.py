@@ -34,6 +34,7 @@ def main(argv):
 
   train_loader_a = get_data_loader(config.datasets['train_a'], batch_size)
   train_loader_b = get_data_loader(config.datasets['train_b'], batch_size)
+  train_loader_c = get_data_loader(config.datasets['train_c'], batch_size)
 
   cmd = "trainer=%s(config.hyperparameters)" % config.hyperparameters['trainer']
   local_dict = locals()
@@ -52,11 +53,13 @@ def main(argv):
   image_directory, snapshot_directory = prepare_snapshot_and_image_folder(config.snapshot_prefix, iterations, config.image_save_iterations)
 
   for ep in range(0, MAX_EPOCHS):
-    for it, (images_a, images_b) in enumerate(izip(train_loader_a,train_loader_b)):
-      if images_a.size(0) != batch_size or images_b.size(0) != batch_size:
+    for it, (images_a, images_b, images_c) in enumerate(izip(train_loader_a,train_loader_b, train_loader_c)):
+      if images_a.size(0) != batch_size or images_b.size(0) != batch_size or images_c.size(0) != batch_size:
+        print('Something wrong with images')
         continue
       images_a = Variable(images_a.cuda(opts.gpu))
       images_b = Variable(images_b.cuda(opts.gpu))
+      images_c = Variable(images_c.cuda(opts.gpu))
 
       # Main training code
       trainer.dis_update(images_a, images_b, config.hyperparameters)

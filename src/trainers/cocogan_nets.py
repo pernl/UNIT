@@ -139,6 +139,9 @@ class COCOMsDis_multi(nn.Module):
     self.model_1_B = self._make_net(ch, input_dim_b, n_layer)
     self.model_2_B = self._make_net(ch, input_dim_b, n_layer)
     self.model_4_B = self._make_net(ch, input_dim_b, n_layer)
+    self.model_1_C = self._make_net(ch, input_dim_c, n_layer)
+    self.model_2_C = self._make_net(ch, input_dim_c, n_layer)
+    self.model_4_C = self._make_net(ch, input_dim_c, n_layer)
 
   def _make_net(self, ch, input_dim, n_layer):
     model = []
@@ -157,9 +160,14 @@ class COCOMsDis_multi(nn.Module):
     self.model_1_B.cuda(gpu)
     self.model_2_B.cuda(gpu)
     self.model_4_B.cuda(gpu)
+    self.model_1_C.cuda(gpu)
+    self.model_2_C.cuda(gpu)
+    self.model_4_C.cuda(gpu)
     self.downsampler.cuda(gpu)
 
+  #def forward(self, x_A, x_B, x_C):
   def forward(self, x_A, x_B):
+    #return self.forward_A(x_A), self.forward_B(x_B), self.forward_C(x_C)
     return self.forward_A(x_A), self.forward_B(x_B)
 
   def forward_A(self, x):
@@ -187,9 +195,9 @@ class COCOMsDis_multi(nn.Module):
   def forward_C(self, x):
     x2 = self.downsample(x)
     x4 = self.downsample(x2)
-    out_1 = self.model_1_A(x)
-    out_2 = self.model_2_A(x2)
-    out_4 = self.model_4_A(x4)
+    out_1 = self.model_1_C(x)
+    out_2 = self.model_2_C(x2)
+    out_4 = self.model_4_C(x4)
     out_1 = out_1.view(-1)
     out_2 = out_2.view(-1)
     out_4 = out_4.view(-1)

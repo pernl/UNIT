@@ -34,7 +34,7 @@ train:
       ch: 64
       input_dim_a: 3
       input_dim_b: 3
-      input_dim_c: 1
+      input_dim_c: 3
       n_layer: 4
     latent_dis:
       name:
@@ -45,7 +45,7 @@ train:
       crop_image_height: 120 # crop image size
       crop_image_width: 160  # crop image size
       class_name: dataset_image        # dataset class name
-      root: /staging/dadl/datasets/playingfordata10/      # dataset folder location
+      root: /staging/dadl/datasets/playingfordata10/images      # dataset folder location
       folder: ./
       list_name: list_GTA.txt  # image list
     train_b: # Domain 2 dataset
@@ -58,11 +58,11 @@ train:
       folder: ./
       list_name: list_leftImg8bit.txt
     train_c: # Domain 3 dataset
-      channels: 1
+      channels: 3
       scale: 0.47        # scaling factor for scaling image before processing
       crop_image_height: 120 # crop image size
       crop_image_width: 160  # crop image size
       class_name: dataset_image
-      root: /staging/dadl/datasets/1/gtFine/train/
+      root: /staging/dadl/datasets/playingfordata10/labels
       folder: ./
-      list_name: list_gtFine.txt
+      list_name: list_labels.txt

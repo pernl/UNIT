@@ -165,10 +165,8 @@ class COCOMsDis_multi(nn.Module):
     self.model_4_C.cuda(gpu)
     self.downsampler.cuda(gpu)
 
-  #def forward(self, x_A, x_B, x_C):
-  def forward(self, x_A, x_B):
-    #return self.forward_A(x_A), self.forward_B(x_B), self.forward_C(x_C)
-    return self.forward_A(x_A), self.forward_B(x_B)
+  def forward(self, x_ba,x_ab, x_ca, x_cb, x_ac, x_bc):
+    return self.forward_A(x_ba), self.forward_B(x_ab), self.forward_A(x_ca), self.forward_B(x_cb), self.forward_C(x_ac), self.forward_C(x_bc)
 
   def forward_A(self, x):
     x2 = self.downsample(x)
@@ -543,7 +541,7 @@ class COCOResGen_multi(nn.Module):
     x_Aa, x_Ba, x_Ca = torch.split(out_A, x_A.size(0), dim=0)
     x_Ab, x_Bb, x_Cb = torch.split(out_B, x_A.size(0), dim=0)
     x_Ac, x_Bc, x_Cc = torch.split(out_C, x_A.size(0), dim=0)
-    return x_Aa, x_Ba, x_Ab, x_Bb, shared
+    return x_Aa, x_Ba, x_Ca, x_Ab, x_Bb, x_Cb, x_Ac, x_Bc, x_Cc, shared
 
   def forward_a2b(self, x_A):
     out = self.encode_A(x_A)
@@ -561,6 +559,27 @@ class COCOResGen_multi(nn.Module):
 
   def forward_a2c(self, x_A):
     out = self.encode_A(x_A)
+    shared = self.enc_shared(out)
+    out = self.dec_shared(shared)
+    out = self.decode_C(out)
+    return out, shared
+
+  def forward_c2a(self, x_C):
+    out = self.encode_C(x_C)
+    shared = self.enc_shared(out)
+    out = self.dec_shared(shared)
+    out = self.decode_A(out)
+    return out, shared
+
+  def forward_c2b(self, x_C):
+    out = self.encode_C(x_C)
+    shared = self.enc_shared(out)
+    out = self.dec_shared(shared)
+    out = self.decode_B(out)
+    return out, shared
+
+  def forward_b2c(self, x_B):
+    out = self.encode_B(x_B)
     shared = self.enc_shared(out)
     out = self.dec_shared(shared)
     out = self.decode_C(out)

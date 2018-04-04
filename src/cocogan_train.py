@@ -62,8 +62,8 @@ def main(argv):
       images_c = Variable(images_c.cuda(opts.gpu))
 
       # Main training code
-      trainer.dis_update(images_a, images_b, config.hyperparameters)
-      image_outputs = trainer.gen_update(images_a, images_b, config.hyperparameters)
+      trainer.dis_update(images_a, images_b, images_c, config.hyperparameters)
+      image_outputs = trainer.gen_update(images_a, images_b, images_c, config.hyperparameters)
       assembled_images = trainer.assemble_outputs(images_a, images_b, image_outputs)
 
       # Dump training stats in log file

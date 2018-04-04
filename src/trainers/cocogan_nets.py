@@ -518,7 +518,7 @@ class COCOResGen_multi(nn.Module):
       tch = tch//2
     decA += [nn.ConvTranspose2d(tch, input_dim_a, kernel_size=1, stride=1, padding=0)]
     decB += [nn.ConvTranspose2d(tch, input_dim_b, kernel_size=1, stride=1, padding=0)]
-    decC += [nn.ConvTranspose2d(tch, input_dim_b, kernel_size=1, stride=1, padding=0)]
+    decC += [nn.ConvTranspose2d(tch, input_dim_c, kernel_size=1, stride=1, padding=0)]
     decA += [nn.Tanh()]
     decB += [nn.Tanh()]
     decC += [nn.Tanh()]
@@ -526,14 +526,14 @@ class COCOResGen_multi(nn.Module):
     ##############################################################################
     self.encode_A = nn.Sequential(*encA)
     self.encode_B = nn.Sequential(*encB)
-    self.encode_C = nn.Sequential(*encB)
+    self.encode_C = nn.Sequential(*encC)
     self.enc_shared = nn.Sequential(*enc_shared)
     self.dec_shared = nn.Sequential(*dec_shared)
     self.decode_A = nn.Sequential(*decA)
     self.decode_B = nn.Sequential(*decB)
-    self.decode_C = nn.Sequential(*decB)
+    self.decode_C = nn.Sequential(*decC)
 
-  def forward(self, x_A, x_B):
+  def forward(self, x_A, x_B, x_C):
     out = torch.cat((self.encode_A(x_A), self.encode_B(x_B)), 0)
     shared = self.enc_shared(out)
     out = self.dec_shared(shared)

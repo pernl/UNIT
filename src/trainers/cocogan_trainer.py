@@ -39,9 +39,9 @@ class COCOGANTrainer(nn.Module):
     encoding_loss = torch.mean(mu_2)
     return encoding_loss
 
-  def gen_update(self, images_a, images_b, hyperparameters):
+  def gen_update(self, images_a, images_b, images_c, hyperparameters):
     self.gen.zero_grad()
-    x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b)
+    x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b, images_c)
     x_bab, shared_bab = self.gen.forward_a2b(x_ba)
     x_aba, shared_aba = self.gen.forward_b2a(x_ab)
     outs_a, outs_b = self.dis(x_ba,x_ab)
@@ -82,9 +82,9 @@ class COCOGANTrainer(nn.Module):
     self.gen_total_loss = total_loss.data.cpu().numpy()[0]
     return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab)
 
-  def dis_update(self, images_a, images_b, hyperparameters):
+  def dis_update(self, images_a, images_b, images_c,hyperparameters):
     self.dis.zero_grad()
-    x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b)
+    x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b, images_c)
     data_a = torch.cat((images_a, x_ba), 0)
     data_b = torch.cat((images_b, x_ab), 0)
     res_a, res_b = self.dis(data_a,data_b)

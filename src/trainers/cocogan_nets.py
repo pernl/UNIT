@@ -534,13 +534,15 @@ class COCOResGen_multi(nn.Module):
     self.decode_C = nn.Sequential(*decC)
 
   def forward(self, x_A, x_B, x_C):
-    out = torch.cat((self.encode_A(x_A), self.encode_B(x_B)), 0)
+    out = torch.cat((self.encode_A(x_A), self.encode_B(x_B), self.encode_C(x_C)), 0)
     shared = self.enc_shared(out)
     out = self.dec_shared(shared)
     out_A = self.decode_A(out)
     out_B = self.decode_B(out)
-    x_Aa, x_Ba = torch.split(out_A, x_A.size(0), dim=0)
-    x_Ab, x_Bb = torch.split(out_B, x_A.size(0), dim=0)
+    out_C = self.decode_C(out)
+    x_Aa, x_Ba, x_Ca = torch.split(out_A, x_A.size(0), dim=0)
+    x_Ab, x_Bb, x_Cb = torch.split(out_B, x_A.size(0), dim=0)
+    x_Ac, x_Bc, x_Cc = torch.split(out_C, x_A.size(0), dim=0)
     return x_Aa, x_Ba, x_Ab, x_Bb, shared
 
   def forward_a2b(self, x_A):

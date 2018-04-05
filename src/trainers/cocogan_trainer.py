@@ -100,7 +100,7 @@ class COCOGANTrainer(nn.Module):
                  hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss + enc_bcb_loss + enc_cbc_loss + enc_cac_loss + enc_aca_loss)
     total_loss.backward()
     self.gen_opt.step()
-    self.gen_enc_loss = enc_loss.data.cpu().numpy()[0]
+    self.gen_enc_loss = enc_loss.data.cpu().numpy()[0] #TODO: Eventually add new loss terms to here as well if I figure out why they need to be numpyed
     self.gen_enc_bab_loss = enc_bab_loss.data.cpu().numpy()[0]
     self.gen_enc_aba_loss = enc_aba_loss.data.cpu().numpy()[0]
     self.gen_ad_loss_ba = ad_loss_ba.data.cpu().numpy()[0]
@@ -125,31 +125,31 @@ class COCOGANTrainer(nn.Module):
     # res_true_a, res_true_b = self.dis(images_a,images_b)
     # res_fake_a, res_fake_b = self.dis(x_ba, x_ab)
     for it, (out_ba, out_ab, out_ca, out_cb, out_ac, out_bc) in enumerate(itertools.izip(outs_ba, outs_ab, outs_ca, outs_cb, outs_ac, outs_bc)):
-      out_a = nn.functional.sigmoid(out_ba)
-      out_b = nn.functional.sigmoid(out_ab)
-      out_true_a, out_fake_a = torch.split(out_a, out_a.size(0) // 2, 0)
-      out_true_b, out_fake_b = torch.split(out_b, out_b.size(0) // 2, 0)
-      out_true_n = out_true_a.size(0)
-      out_fake_n = out_fake_a.size(0)
+      out_ba = nn.functional.sigmoid(out_ba)
+      out_ab = nn.functional.sigmoid(out_ab)
+      out_true_ba, out_fake_ba = torch.split(out_ba, out_ba.size(0) // 2, 0)
+      out_true_ab, out_fake_ab = torch.split(out_ab, out_ab.size(0) // 2, 0)
+      out_true_n = out_true_ba.size(0)
+      out_fake_n = out_fake_ba.size(0)
       all1 = Variable(torch.ones((out_true_n)).cuda(self.gpu))
       all0 = Variable(torch.zeros((out_fake_n)).cuda(self.gpu))
-      ad_true_loss_a = nn.functional.binary_cross_entropy(out_true_a, all1)
-      ad_true_loss_b = nn.functional.binary_cross_entropy(out_true_b, all1)
-      ad_fake_loss_a = nn.functional.binary_cross_entropy(out_fake_a, all0)
-      ad_fake_loss_b = nn.functional.binary_cross_entropy(out_fake_b, all0)
+      ad_true_loss_ba = nn.functional.binary_cross_entropy(out_true_ba, all1)
+      ad_true_loss_ab = nn.functional.binary_cross_entropy(out_true_ab, all1)
+      ad_fake_loss_ba = nn.functional.binary_cross_entropy(out_fake_ba, all0)
+      ad_fake_loss_ab = nn.functional.binary_cross_entropy(out_fake_ab, all0)
       if it==0:
-        ad_loss_a = ad_true_loss_a + ad_fake_loss_a
-        ad_loss_b = ad_true_loss_b + ad_fake_loss_b
+        ad_loss_ba = ad_true_loss_ba + ad_fake_loss_ba
+        ad_loss_ab = ad_true_loss_ab + ad_fake_loss_ab
       else:
-        ad_loss_a += ad_true_loss_a + ad_fake_loss_a
-        ad_loss_b += ad_true_loss_b + ad_fake_loss_b
-      true_a_acc = _compute_true_acc(out_true_a)
-      true_b_acc = _compute_true_acc(out_true_b)
-      fake_a_acc = _compute_fake_acc(out_fake_a)
-      fake_b_acc = _compute_fake_acc(out_fake_b)
-      exec( 'self.dis_true_acc_%d = 0.5 * (true_a_acc + true_b_acc)' %it)
+        ad_loss_ba += ad_true_loss_ba + ad_fake_loss_ba
+        ad_loss_ab += ad_true_loss_ab + ad_fake_loss_ab
+      true_a_acc = _compute_true_acc(out_true_ba)
+      true_b_acc = _compute_true_acc(out_true_ab)
+      fake_a_acc = _compute_fake_acc(out_fake_ba)
+      fake_b_acc = _compute_fake_acc(out_fake_ab)
+      exec( 'self.dis_true_acc_%d = 0.5 * (true_a_acc + true_b_acc)' %it) #Why?
       exec( 'self.dis_fake_acc_%d = 0.5 * (fake_a_acc + fake_b_acc)' %it)
-    loss = hyperparameters['gan_w'] * ( ad_loss_a + ad_loss_b )
+    loss = hyperparameters['gan_w'] * ( ad_loss_ba + ad_loss_ab )
     loss.backward()
     self.dis_opt.step()
     self.dis_loss = loss.data.cpu().numpy()[0]

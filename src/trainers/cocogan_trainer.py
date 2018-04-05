@@ -127,8 +127,16 @@ class COCOGANTrainer(nn.Module):
     for it, (out_ba, out_ab, out_ca, out_cb, out_ac, out_bc) in enumerate(itertools.izip(outs_ba, outs_ab, outs_ca, outs_cb, outs_ac, outs_bc)):
       out_ba = nn.functional.sigmoid(out_ba)
       out_ab = nn.functional.sigmoid(out_ab)
+      out_ca = nn.functional.sigmoid(out_ca)
+      out_cb = nn.functional.sigmoid(out_cb)
+      out_ac = nn.functional.sigmoid(out_ac)
+      out_bc = nn.functional.sigmoid(out_bc)
       out_true_ba, out_fake_ba = torch.split(out_ba, out_ba.size(0) // 2, 0)
       out_true_ab, out_fake_ab = torch.split(out_ab, out_ab.size(0) // 2, 0)
+      out_true_ca, out_fake_ca = torch.split(out_ca, out_ca.size(0) // 2, 0)
+      out_true_cb, out_fake_cb = torch.split(out_cb, out_cb.size(0) // 2, 0)
+      out_true_ac, out_fake_ac = torch.split(out_ba, out_ac.size(0) // 2, 0)
+      out_true_bc, out_fake_bc = torch.split(out_ab, out_bc.size(0) // 2, 0)
       out_true_n = out_true_ba.size(0)
       out_fake_n = out_fake_ba.size(0)
       all1 = Variable(torch.ones((out_true_n)).cuda(self.gpu))
@@ -137,19 +145,36 @@ class COCOGANTrainer(nn.Module):
       ad_true_loss_ab = nn.functional.binary_cross_entropy(out_true_ab, all1)
       ad_fake_loss_ba = nn.functional.binary_cross_entropy(out_fake_ba, all0)
       ad_fake_loss_ab = nn.functional.binary_cross_entropy(out_fake_ab, all0)
+      ad_true_loss_ca = nn.functional.binary_cross_entropy(out_true_ca, all1)
+      ad_true_loss_ac = nn.functional.binary_cross_entropy(out_true_ac, all1)
+      ad_fake_loss_ca = nn.functional.binary_cross_entropy(out_fake_ca, all0)
+      ad_fake_loss_ac = nn.functional.binary_cross_entropy(out_fake_ac, all0)
+      ad_true_loss_cb = nn.functional.binary_cross_entropy(out_true_cb, all1)
+      ad_true_loss_bc = nn.functional.binary_cross_entropy(out_true_bc, all1)
+      ad_fake_loss_cb = nn.functional.binary_cross_entropy(out_fake_cb, all0)
+      ad_fake_loss_bc = nn.functional.binary_cross_entropy(out_fake_bc, all0)
       if it==0:
         ad_loss_ba = ad_true_loss_ba + ad_fake_loss_ba
         ad_loss_ab = ad_true_loss_ab + ad_fake_loss_ab
+        ad_loss_ca = ad_true_loss_ca + ad_fake_loss_ca
+        ad_loss_ac = ad_true_loss_ac + ad_fake_loss_ac
+        ad_loss_bc = ad_true_loss_bc + ad_fake_loss_bc
+        ad_loss_cb = ad_true_loss_cb + ad_fake_loss_cb
       else:
         ad_loss_ba += ad_true_loss_ba + ad_fake_loss_ba
         ad_loss_ab += ad_true_loss_ab + ad_fake_loss_ab
-      true_a_acc = _compute_true_acc(out_true_ba)
+        ad_loss_ca += ad_true_loss_ca + ad_fake_loss_ca
+        ad_loss_ac += ad_true_loss_ac + ad_fake_loss_ac
+        ad_loss_bc += ad_true_loss_bc + ad_fake_loss_bc
+        ad_loss_cb += ad_true_loss_cb + ad_fake_loss_cb
+
+      true_a_acc = _compute_true_acc(out_true_ba)  #Why?
       true_b_acc = _compute_true_acc(out_true_ab)
       fake_a_acc = _compute_fake_acc(out_fake_ba)
       fake_b_acc = _compute_fake_acc(out_fake_ab)
       exec( 'self.dis_true_acc_%d = 0.5 * (true_a_acc + true_b_acc)' %it) #Why?
       exec( 'self.dis_fake_acc_%d = 0.5 * (fake_a_acc + fake_b_acc)' %it)
-    loss = hyperparameters['gan_w'] * ( ad_loss_ba + ad_loss_ab )
+    loss = hyperparameters['gan_w'] * ( ad_loss_ba + ad_loss_ab + ad_loss_ca + ad_loss_ac + ad_loss_bc + ad_loss_cb)
     loss.backward()
     self.dis_opt.step()
     self.dis_loss = loss.data.cpu().numpy()[0]

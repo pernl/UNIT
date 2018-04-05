@@ -157,6 +157,35 @@ class COCODis(nn.Module):
     outs_B.append(out_B)
     return outs_A, outs_B
 
+
+class COCOLatentDis(nn.Module):
+  def __init__(self, params):
+    super(COCOLatentDis, self).__init__()
+    ch = params['ch']
+    input_dim_latent = params['input_dim_latent']
+    n_layer = params['n_layer']
+    self.model = self._make_net(ch, input_dim_latent, n_layer)
+
+  def _make_net(self, ch, input_dim, n_layer):
+    model = []
+    model += [LeakyReLUConv2d(input_dim, ch, kernel_size=3, stride=2, padding=1)] #16
+    tch = ch
+    for i in range(1, n_layer):
+      model += [LeakyReLUConv2d(tch, tch * 2, kernel_size=3, stride=2, padding=1)] # 8
+      tch *= 2
+    model += [nn.Conv2d(tch, 1, kernel_size=1, stride=1, padding=0)]  # 1
+    return nn.Sequential(*model)
+
+  def cuda(self, gpu):
+    self.model.cuda(gpu)
+
+  def forward(self, latent_code):
+    prediction = self.model(latent_code)
+    prediction = prediction.view(-1)
+    outs = []
+    outs.append(prediction)
+    return outs
+
 class COCOResGen(nn.Module):
 # In COCOResGen, the first convolutional layers in the encoders are based on LeakyReLU with no normalization layers.
 # But all the other non residual-block based layers are based on ReLU with Instance Norm activation.
@@ -335,14 +364,21 @@ class COCOResGen2(nn.Module):
     self.decode_B = nn.Sequential(*decB)
 
   def forward(self, x_A, x_B):
-    out = torch.cat((self.encode_A(x_A), self.encode_B(x_B)), 0)
-    shared = self.enc_shared(out)
-    out = self.dec_shared(shared)
-    out_A = self.decode_A(out)
-    out_B = self.decode_B(out)
-    x_Aa, x_Ba = torch.split(out_A, x_A.size(0), dim=0)
-    x_Ab, x_Bb = torch.split(out_B, x_A.size(0), dim=0)
-    return x_Aa, x_Ba, x_Ab, x_Bb, shared
+    #  print('Img: {}'.format(x_A.data.cpu().numpy().shape))
+    #  out = torch.cat((self.encode_A(x_A), self.encode_B(x_B)), 0)
+    #  shared = self.enc_shared(out)
+    #  out = self.dec_shared(shared)
+    #  out_A = self.decode_A(out)
+    #  out_B = self.decode_B(out)
+    shared_A = self.enc_shared(self.encode_A(x_A))
+    shared_B = self.enc_shared(self.encode_B(x_B))
+    x_Aa = self.decode_A(self.dec_shared(shared_A))
+    x_Ba = self.decode_A(self.dec_shared(shared_B))
+    x_Ab = self.decode_B(self.dec_shared(shared_A))
+    x_Bb = self.decode_B(self.dec_shared(shared_B))
+    #  x_Aa, x_Ba = torch.split(out_A, x_A.size(0), dim=0)
+    #  x_Ab, x_Bb = torch.split(out_B, x_A.size(0), dim=0)
+    return x_Aa, x_Ba, x_Ab, x_Bb, shared_A, shared_B
 
   def forward_a2b(self, x_A):
     out = self.encode_A(x_A)

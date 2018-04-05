@@ -18,16 +18,20 @@ class COCOGANTrainer(nn.Module):
     # Initiate the networks
     exec( 'self.dis = %s(hyperparameters[\'dis\'])' % hyperparameters['dis']['name'])
     exec( 'self.gen = %s(hyperparameters[\'gen\'])' % hyperparameters['gen']['name'] )
+
+    latent_param = {'ch': 64, 'input_dim_latent': 256, 'n_layer': 4}
+    self.latent_dis = COCOLatentDis(latent_param)
     # Setup the optimizers
     self.dis_opt = torch.optim.Adam(self.dis.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=0.0001)
+    self.latent_dis_opt = torch.optim.Adam(self.latent_dis.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=0.0001)
     self.gen_opt = torch.optim.Adam(self.gen.parameters(), lr=lr, betas=(0.5, 0.999), weight_decay=0.0001)
     # Network weight initialization
     self.dis.apply(gaussian_weights_init)
+    self.latent_dis.apply(gaussian_weights_init)
     self.gen.apply(gaussian_weights_init)
     # Setup the loss function for training
     self.ll_loss_criterion_a = torch.nn.L1Loss()
     self.ll_loss_criterion_b = torch.nn.L1Loss()
-
 
   def _compute_kl(self, mu):
     # def _compute_kl(self, mu, sd):
@@ -41,10 +45,10 @@ class COCOGANTrainer(nn.Module):
 
   def gen_update(self, images_a, images_b, hyperparameters):
     self.gen.zero_grad()
-    x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b)
+    x_aa, x_ba, x_ab, x_bb, shared_A, shared_B = self.gen(images_a, images_b)
     x_bab, shared_bab = self.gen.forward_a2b(x_ba)
     x_aba, shared_aba = self.gen.forward_b2a(x_ab)
-    print(shared.cpu().numpy().shape, shared_aba.cpu().numpy().shape, shared_bab.cpu().numpy().shape)
+    #  print(shared.data.cpu().numpy().shape, shared_aba.data.cpu().numpy().shape)
     outs_a, outs_b = self.dis(x_ba,x_ab)
     for it, (out_a, out_b) in enumerate(itertools.izip(outs_a, outs_b)):
       outputs_a = nn.functional.sigmoid(out_a)
@@ -57,7 +61,19 @@ class COCOGANTrainer(nn.Module):
         ad_loss_a += nn.functional.binary_cross_entropy(outputs_a, all_ones)
         ad_loss_b += nn.functional.binary_cross_entropy(outputs_b, all_ones)
 
-    enc_loss  = self._compute_kl(shared)
+    outs_a_latent, outs_b_latent = self.latent_dis(shared_A), self.latent_dis(shared_B)
+    for it, (out_a, out_b) in enumerate(itertools.izip(outs_a_latent, outs_b_latent)):
+      outputs_a = nn.functional.sigmoid(out_a)
+      outputs_b = nn.functional.sigmoid(out_b)
+      all_ones = Variable(torch.ones((outputs_a.size(0))).cuda(self.gpu))
+      if it==0:
+        ad_loss_a_latent = nn.functional.binary_cross_entropy(outputs_a, all_ones)
+        ad_loss_b_latent = nn.functional.binary_cross_entropy(outputs_b, all_ones)
+      else:
+        ad_loss_a_latent += nn.functional.binary_cross_entropy(outputs_a, all_ones)
+        ad_loss_b_latent += nn.functional.binary_cross_entropy(outputs_b, all_ones)
+
+    enc_loss = self._compute_kl(shared_A) + self._compute_kl(shared_B)
     enc_bab_loss = self._compute_kl(shared_bab)
     enc_aba_loss = self._compute_kl(shared_aba)
     ll_loss_a = self.ll_loss_criterion_a(x_aa, images_a)
@@ -65,6 +81,7 @@ class COCOGANTrainer(nn.Module):
     ll_loss_aba = self.ll_loss_criterion_a(x_aba, images_a)
     ll_loss_bab = self.ll_loss_criterion_b(x_bab, images_b)
     total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
+                 hyperparameters['latent_gan'] * (ad_loss_a_latent + ad_loss_b_latent) + \
                  hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
                  hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
                  hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
@@ -85,7 +102,7 @@ class COCOGANTrainer(nn.Module):
 
   def dis_update(self, images_a, images_b, hyperparameters):
     self.dis.zero_grad()
-    x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b)
+    x_aa, x_ba, x_ab, x_bb, shared_A, shared_B = self.gen(images_a, images_b)
     data_a = torch.cat((images_a, x_ba), 0)
     data_b = torch.cat((images_b, x_ab), 0)
     res_a, res_b = self.dis(data_a,data_b)
@@ -120,6 +137,43 @@ class COCOGANTrainer(nn.Module):
     loss.backward()
     self.dis_opt.step()
     self.dis_loss = loss.data.cpu().numpy()[0]
+    return shared_A, shared_B
+
+  def latent_dis_update(self, images_a, images_b, hyperparameters):
+    self.latent_dis.zero_grad()
+    x_aa, x_ba, x_ab, x_bb, shared_A, shared_B = self.gen(images_a, images_b)
+    #  data_a = torch.cat((images_a, x_ba), 0)
+    #  data_b = torch.cat((images_b, x_ab), 0)
+    prediction_A, prediction_B = self.latent_dis(shared_A), self.latent_dis(shared_B)
+    for it, (this_a, this_b) in enumerate(itertools.izip(prediction_A, prediction_B)):
+      out_a = nn.functional.sigmoid(this_a)
+      out_b = nn.functional.sigmoid(this_b)
+      #  out_true_n = out_true_a.size(0)
+      #  out_fake_n = out_fake_a.size(0)
+      a_true = Variable(torch.ones((out_a.size(0))).cuda(self.gpu))
+      b_true = Variable(torch.zeros((out_b.size(0))).cuda(self.gpu))
+      ad_true_loss_a = nn.functional.binary_cross_entropy(out_a, a_true)
+      ad_true_loss_b = nn.functional.binary_cross_entropy(out_b, b_true)
+      #  ad_fake_loss_a = nn.functional.binary_cross_entropy(out_fake_a, all0)
+      #  ad_fake_loss_b = nn.functional.binary_cross_entropy(out_fake_b, all0)
+      if it == 0:
+        ad_loss_a = ad_true_loss_a
+        ad_loss_b = ad_true_loss_b
+      else:
+        ad_loss_a += ad_true_loss_a
+        ad_loss_b += ad_true_loss_b
+        #  ad_loss_a += ad_true_loss_a + ad_fake_loss_a
+        #  ad_loss_b += ad_true_loss_b + ad_fake_loss_b
+      #  true_a_acc = _compute_true_acc(out_true_a)
+      #  true_b_acc = _compute_true_acc(out_true_b)
+      #  fake_a_acc = _compute_fake_acc(out_fake_a)
+      #  fake_b_acc = _compute_fake_acc(out_fake_b)
+      #  exec( 'self.dis_true_acc_%d = 0.5 * (true_a_acc + true_b_acc)' %it)
+      #  exec( 'self.dis_fake_acc_%d = 0.5 * (fake_a_acc + fake_b_acc)' %it)
+    loss = hyperparameters['gan_w'] * ( ad_loss_a + ad_loss_b )
+    loss.backward()
+    self.latent_dis_opt.step()
+    self.latent_dis_loss = loss.data.cpu().numpy()[0]
     return
 
   def assemble_outputs(self, images_a, images_b, network_outputs):
@@ -155,6 +209,7 @@ class COCOGANTrainer(nn.Module):
   def cuda(self, gpu):
     self.gpu = gpu
     self.dis.cuda(gpu)
+    self.latent_dis.cuda(gpu)
     self.gen.cuda(gpu)
 
   def normalize_image(self, x):

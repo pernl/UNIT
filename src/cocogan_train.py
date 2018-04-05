@@ -64,7 +64,7 @@ def main(argv):
       # Main training code
       trainer.dis_update(images_a, images_b, images_c, config.hyperparameters)
       image_outputs = trainer.gen_update(images_a, images_b, images_c, config.hyperparameters)
-      assembled_images = trainer.assemble_outputs(images_a, images_b, image_outputs)
+      assembled_images = trainer.assemble_outputs(images_a, images_b, images_c, image_outputs)
 
       # Dump training stats in log file
       if (iterations+1) % config.display == 0:

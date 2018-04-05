@@ -110,7 +110,8 @@ class COCOGANTrainer(nn.Module):
     self.gen_ll_loss_aba = ll_loss_aba.data.cpu().numpy()[0]
     self.gen_ll_loss_bab = ll_loss_bab.data.cpu().numpy()[0]
     self.gen_total_loss = total_loss.data.cpu().numpy()[0]
-    return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab)
+    #return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab)
+    return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab, x_cc, x_ac, x_ca, x_cb, x_bc)
 
   def dis_update(self, images_a, images_b, images_c,hyperparameters):
     self.dis.zero_grad()
@@ -180,17 +181,27 @@ class COCOGANTrainer(nn.Module):
     self.dis_loss = loss.data.cpu().numpy()[0]
     return
 
-  def assemble_outputs(self, images_a, images_b, network_outputs):
+  def assemble_outputs(self, images_a, images_b, images_c, network_outputs):
     images_a = self.normalize_image(images_a)
     images_b = self.normalize_image(images_b)
+    images_c = self.normalize_image(images_c)
     x_aa = self.normalize_image(network_outputs[0])
     x_ba = self.normalize_image(network_outputs[1])
     x_ab = self.normalize_image(network_outputs[2])
     x_bb = self.normalize_image(network_outputs[3])
     x_aba = self.normalize_image(network_outputs[4])
     x_bab = self.normalize_image(network_outputs[5])
+    x_cc = self.normalize_image(network_outputs[6])
+    x_ac = self.normalize_image(network_outputs[7])
+    x_ca = self.normalize_image(network_outputs[8])
+    x_cb = self.normalize_image(network_outputs[9])
+    x_bc = self.normalize_image(network_outputs[9])
+    #return torch.cat((images_a[0:1, ::], x_aa[0:1, ::], x_ab[0:1, ::], x_aba[0:1, ::],
+    #                  images_b[0:1, ::], x_bb[0:1, ::], x_ba[0:1, ::], x_bab[0:1, ::]), 3)
     return torch.cat((images_a[0:1, ::], x_aa[0:1, ::], x_ab[0:1, ::], x_aba[0:1, ::],
-                      images_b[0:1, ::], x_bb[0:1, ::], x_ba[0:1, ::], x_bab[0:1, ::]), 3)
+                      images_b[0:1, ::], x_bb[0:1, ::], x_ba[0:1, ::], x_bab[0:1, ::],
+                      images_c[0:1, ::], x_cc[0:1, ::], x_ac[0:1, ::], x_ca[0:1, ::],
+                      x_cb[0:1, ::], x_bc[0:1, ::]), 3)
 
   def resume(self, snapshot_prefix):
     dirname = os.path.dirname(snapshot_prefix)

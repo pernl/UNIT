@@ -30,7 +30,6 @@ class COCOGANTrainer(nn.Module):
     self.ll_loss_criterion_a = torch.nn.L1Loss()
     self.ll_loss_criterion_b = torch.nn.L1Loss()
     self.feed_loss = torch.nn.NLLLoss2d(ignore_index=255)
-    #self.feed_loss = torch.nn.CrossEntropyLoss()
 
 
   def _compute_kl(self, mu):
@@ -76,16 +75,10 @@ class COCOGANTrainer(nn.Module):
     model.load_state_dict(checkpoint['state_dict'])
     model.cuda()
     model.eval()
-    labels_b_yolo = wrap_cuda(Variable(labels_b, volatile=False))
-    #loss_func = torch.nn.NLLLoss2d(ignore_index=255)
-    #loss_func = wrap_cuda(loss_func)
+    labels_b_cuda = wrap_cuda(Variable(labels_b, volatile=False))
     #segm_x_ab = model.forward(x_ab)[0]
     segm_x_ba = model.forward(x_ba)[0]
-    #segm_loss_a = nn.functional.binary_cross_entropy(segm_x_ab, segm_gt_a)
-    #segm_loss_b = nn.functional.binary_cross_entropy(segm_x_ba, labels_b_yolo)
-    #segm_loss_b = torch.nn.NLLLoss2d(segm_x_ba, labels_b_yolo, ignore_index=255) #Denna "funkar"
-    #segm_loss_b = loss_func(segm_x_ba, labels_b_yolo)
-    segm_loss_b = self.feed_loss(segm_x_ba, labels_b_yolo)
+    segm_loss_b = self.feed_loss(segm_x_ba, labels_b_cuda)
 
     total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
                  hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \

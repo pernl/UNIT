@@ -11,9 +11,11 @@ from trainers import *
 from datasets import *
 import sys
 import torchvision
+import torch
 from itertools import izip
 import tensorflow as tf
 from optparse import OptionParser
+import numpy as np
 parser = OptionParser()
 parser.add_option('--gpu', type=int, help="gpu id", default=0)
 parser.add_option('--resume', type=int, help="resume training?", default=0)
@@ -24,6 +26,11 @@ MAX_EPOCHS = 100000
 
 def main(argv):
   (opts, args) = parser.parse_args(argv)
+
+  seed = 0
+  torch.cuda.manual_seed(seed)  # Set seed for deterministic, is this enough?
+  torch.manual_seed(seed)
+  np.random.seed(seed=seed)
 
   # Load experiment setting
   assert isinstance(opts, object)

@@ -36,7 +36,7 @@ class dataset_image(data.Dataset):
   def _load_one_image(self, img_name, test=False):
     img = cv2.cvtColor(cv2.imread(img_name), cv2.COLOR_BGR2RGB)
     if self.scale > 0:
-      img = cv2.resize(img,None,fx=self.scale,fy=self.scale)
+      img = cv2.resize(img,None,fx=self.scale,fy=self.scale, interpolation=cv2.INTER_AREA)  #INTER_AREA best for scaling down
     img = np.float32(img)
     h, w, c = img.shape
     if test==True:

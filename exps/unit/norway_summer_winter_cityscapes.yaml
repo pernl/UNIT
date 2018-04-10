@@ -1,0 +1,68 @@
+# Copyright (C) 2017 NVIDIA Corporation.  All rights reserved.
+# Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
+train:
+  snapshot_save_iterations: 5000 # How often do you want to save trained models
+  image_save_iterations: 100 # How often do you want to save output images during training
+  image_display_iterations: 100
+  display: 1 # How often do you want to log the training stats
+  snapshot_prefix: /staging/dadl/norway_summer_winter_cityscapes_multi_domain/ # Where do you want to save the outputs
+  hyperparameters:
+    trainer: COCOGANTrainer
+    lr: 0.0001             # learning rate
+    ll_direct_link_w: 100  # weight on the self L1 reconstruction loss
+    kl_direct_link_w: 0.1 # weight on VAE encoding loss
+    ll_cycle_link_w: 100   # weight on the cycle L1 reconstruction loss
+    kl_cycle_link_w: 0.1  # weight on the cycle L1 reconstruction loss
+    gan_w: 10              # weight on the adversarial loss
+    batch_size: 1          # image batch size per domain
+    max_iterations: 50000 # maximum number of training epochs
+    gen:
+      name: COCOResGen_multi
+      ch: 64               # base channel number per layer
+      input_dim_a: 3
+      input_dim_b: 3
+      input_dim_c: 3
+      n_enc_front_blk: 3
+      n_enc_res_blk: 3
+      n_enc_shared_blk: 1
+      n_gen_shared_blk: 1
+      n_gen_res_blk: 3
+      n_gen_front_blk: 3
+      res_dropout_ratio: 0.5
+    dis:
+      name: COCOMsDis_multi
+      ch: 64
+      input_dim_a: 3
+      input_dim_b: 3
+      input_dim_c: 3
+      n_layer: 4
+    latent_dis:
+      name:
+  datasets:
+    train_a: # Domain 1 dataset
+      channels: 3       # image channel number
+      scale: 0.25       # scaling factor for scaling image before processing
+      crop_image_height: 240 # crop image size
+      crop_image_width: 360  # crop image size
+      class_name: dataset_image        # dataset class name
+      root: /staging/dadl/datasets/norway_summer/      # dataset folder location
+      folder: ./
+      list_name: norway_summer.txt  # image list
+    train_b: # Domain 3 dataset
+      channels: 3
+      scale: 0.25        # scaling factor for scaling image before processing
+      crop_image_height: 240 # crop image size
+      crop_image_width: 360  # crop image size
+      class_name: dataset_image
+      root: /staging/dadl/datasets/norway_winter/
+      folder: ./
+      list_name: norway_winter.txt
+    train_c: # Domain 2 dataset
+      channels: 3       # image channel number
+      scale: 0.25        # scaling factor for scaling image before processing
+      crop_image_height: 240 # crop image size
+      crop_image_width: 360  # crop image size
+      class_name: dataset_image
+      root: /staging/dadl/datasets/1/leftImg8bit/train/
+      folder: ./
+      list_name: list_leftImg8bit.txt

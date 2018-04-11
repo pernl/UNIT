@@ -195,7 +195,7 @@ class COCOGANTrainer(nn.Module):
     x_ac = self.normalize_image(network_outputs[7])
     x_ca = self.normalize_image(network_outputs[8])
     x_cb = self.normalize_image(network_outputs[9])
-    x_bc = self.normalize_image(network_outputs[9])
+    x_bc = self.normalize_image(network_outputs[10])
     #return torch.cat((images_a[0:1, ::], x_aa[0:1, ::], x_ab[0:1, ::], x_aba[0:1, ::],
     #                  images_b[0:1, ::], x_bb[0:1, ::], x_ba[0:1, ::], x_bab[0:1, ::]), 3)
     return torch.cat((images_a[0:1, ::], x_aa[0:1, ::], x_ab[0:1, ::], x_aba[0:1, ::],

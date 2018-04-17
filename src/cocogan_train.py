@@ -16,6 +16,7 @@ from itertools import izip
 import tensorflow as tf
 from optparse import OptionParser
 import numpy as np
+import cv2
 parser = OptionParser()
 parser.add_option('--gpu', type=int, help="gpu id", default=0)
 parser.add_option('--resume', type=int, help="resume training?", default=0)
@@ -78,11 +79,15 @@ def main(argv):
 
       if (iterations+1) % config.image_save_iterations == 0:
         img_filename = '%s/gen_%08d.jpg' % (image_directory, iterations + 1)
-        torchvision.utils.save_image(assembled_images.data / 2 + 0.5, img_filename, nrow=1)
+        torchvision.utils.save_image(assembled_images.data, img_filename, nrow=1)
+        _, enet_classes_ba = torch.max(image_outputs[6], dim=1, keepdim=False)
+        segm_filename_ba = '%s/segm_cat_ba_%08d.jpg' % (image_directory, iterations + 1)
+        segm_image_ba = np.concatenate((np.squeeze(enet_classes_ba.data.cpu().numpy()), np.squeeze(labels_b.cpu().numpy())), axis=1)
+        cv2.imwrite(segm_filename_ba, segm_image_ba)
         write_html(snapshot_directory + "/index.html", iterations + 1, config.image_save_iterations, image_directory)
       elif (iterations + 1) % config.image_display_iterations == 0:
         img_filename = '%s/gen.jpg' % (image_directory)
-        torchvision.utils.save_image(assembled_images.data / 2 + 0.5, img_filename, nrow=1)
+        torchvision.utils.save_image(assembled_images.data, img_filename, nrow=1)
 
       # Save network weights
       if (iterations+1) % config.snapshot_save_iterations == 0:

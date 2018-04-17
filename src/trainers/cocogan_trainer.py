@@ -99,7 +99,7 @@ class COCOGANTrainer(nn.Module):
     self.gen_ll_loss_bab = ll_loss_bab.data.cpu().numpy()[0]
     self.gen_total_loss = total_loss.data.cpu().numpy()[0]
     self.gen_segm_loss_b = segm_loss_b.data.cpu().numpy()[0]
-    return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab)
+    return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab, segm_x_ba)
 
   def dis_update(self, images_a, images_b, hyperparameters):
     self.dis.zero_grad()
@@ -176,4 +176,4 @@ class COCOGANTrainer(nn.Module):
     self.gen.cuda(gpu)
 
   def normalize_image(self, x):
-    return x[:,0:3,:,:]
+    return x[:,0:3,:,:] / 2 + 0.5

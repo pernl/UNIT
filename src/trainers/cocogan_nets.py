@@ -470,7 +470,7 @@ class COCOResGen_multi(nn.Module):
     encC = []
     encA += [LeakyReLUConv2d(input_dim_a, ch, kernel_size=7, stride=1, padding=3)]
     encB += [LeakyReLUConv2d(input_dim_b, ch, kernel_size=7, stride=1, padding=3)]
-    encC += [LeakyReLUConv2d(input_dim_b, ch, kernel_size=7, stride=1, padding=3)]
+    encC += [LeakyReLUConv2d(input_dim_c, ch, kernel_size=7, stride=1, padding=3)]
     tch = ch
     for i in range(1,n_enc_front_blk):
       encA += [LeakyReLUConv2d(tch, tch * 2, kernel_size=3, stride=2, padding=1)]

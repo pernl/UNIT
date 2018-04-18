@@ -96,7 +96,7 @@ class COCOGANTrainer(nn.Module):
     total_loss = hyperparameters['gan_w'] * (ad_loss_ba + ad_loss_ab + ad_loss_ca + ad_loss_cb + ad_loss_ac + ad_loss_bc) + \
                  hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b + ll_loss_c) + \
                  hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab + ll_loss_bcb + ll_loss_cbc + ll_loss_cac + ll_loss_aca) + \
-                 hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
+                 hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss + enc_loss) + \
                  hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss + enc_bcb_loss + enc_cbc_loss + enc_cac_loss + enc_aca_loss)
     total_loss.backward()
     self.gen_opt.step()
@@ -136,8 +136,8 @@ class COCOGANTrainer(nn.Module):
       out_true_ab, out_fake_ab = torch.split(out_ab, out_ab.size(0) // 2, 0)
       out_true_ca, out_fake_ca = torch.split(out_ca, out_ca.size(0) // 2, 0)
       out_true_cb, out_fake_cb = torch.split(out_cb, out_cb.size(0) // 2, 0)
-      out_true_ac, out_fake_ac = torch.split(out_ba, out_ac.size(0) // 2, 0)
-      out_true_bc, out_fake_bc = torch.split(out_ab, out_bc.size(0) // 2, 0)
+      out_true_ac, out_fake_ac = torch.split(out_ac, out_ac.size(0) // 2, 0)
+      out_true_bc, out_fake_bc = torch.split(out_bc, out_bc.size(0) // 2, 0)
       out_true_n = out_true_ba.size(0)
       out_fake_n = out_fake_ba.size(0)
       all1 = Variable(torch.ones((out_true_n)).cuda(self.gpu))

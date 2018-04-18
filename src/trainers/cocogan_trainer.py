@@ -42,7 +42,7 @@ class COCOGANTrainer(nn.Module):
     encoding_loss = torch.mean(mu_2)
     return encoding_loss
 
-  def gen_update(self, images_a, images_b, hyperparameters, labels_b):
+  def gen_update(self, images_a, images_b, hyperparameters, labels_a, labels_b):
     self.gen.zero_grad()
     x_aa, x_ba, x_ab, x_bb, shared = self.gen(images_a, images_b)
     x_bab, shared_bab = self.gen.forward_a2b(x_ba)
@@ -75,9 +75,11 @@ class COCOGANTrainer(nn.Module):
     model.load_state_dict(checkpoint['state_dict'])
     model.cuda()
     model.eval()
+    labels_a_cuda = wrap_cuda(Variable(labels_a, volatile=False))
     labels_b_cuda = wrap_cuda(Variable(labels_b, volatile=False))
-    #segm_x_ab = model.forward(x_ab)[0]
+    segm_x_ab = model.forward(x_ab)[0]
     segm_x_ba = model.forward(x_ba)[0]
+    segm_loss_a = self.feed_loss(segm_x_ab, labels_a_cuda)
     segm_loss_b = self.feed_loss(segm_x_ba, labels_b_cuda)
 
     total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
@@ -85,7 +87,7 @@ class COCOGANTrainer(nn.Module):
                  hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
                  hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
                  hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss) + \
-                 10* segm_loss_b
+                 hyperparameters['feedback_weight'] * (segm_loss_a + segm_loss_b)
     total_loss.backward()
     self.gen_opt.step()
     self.gen_enc_loss = enc_loss.data.cpu().numpy()[0]
@@ -99,7 +101,7 @@ class COCOGANTrainer(nn.Module):
     self.gen_ll_loss_bab = ll_loss_bab.data.cpu().numpy()[0]
     self.gen_total_loss = total_loss.data.cpu().numpy()[0]
     self.gen_segm_loss_b = segm_loss_b.data.cpu().numpy()[0]
-    return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab, segm_x_ba)
+    return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab, segm_x_ba, segm_x_ab)
 
   def dis_update(self, images_a, images_b, hyperparameters):
     self.dis.zero_grad()

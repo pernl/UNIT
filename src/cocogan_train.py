@@ -60,7 +60,9 @@ def main(argv):
   image_directory, snapshot_directory = prepare_snapshot_and_image_folder(config.snapshot_prefix, iterations, config.image_save_iterations)
 
   for ep in range(0, MAX_EPOCHS):
-    for it, (images_a, data_b) in enumerate(izip(train_loader_a,train_loader_b)):
+    for it, (data_a, data_b) in enumerate(izip(train_loader_a,train_loader_b)):
+      images_a = data_a['data']
+      labels_a = data_a['data_lab']
       images_b = data_b['data']
       labels_b = data_b['data_lab']
       if images_a.size(0) != batch_size or images_b.size(0) != batch_size:
@@ -70,7 +72,7 @@ def main(argv):
 
       # Main training code
       trainer.dis_update(images_a, images_b, config.hyperparameters)
-      image_outputs = trainer.gen_update(images_a, images_b, config.hyperparameters, labels_b)
+      image_outputs = trainer.gen_update(images_a, images_b, config.hyperparameters, labels_a, labels_b)
       assembled_images = trainer.assemble_outputs(images_a, images_b, image_outputs)
 
       # Dump training stats in log file
@@ -81,9 +83,12 @@ def main(argv):
         img_filename = '%s/gen_%08d.jpg' % (image_directory, iterations + 1)
         torchvision.utils.save_image(assembled_images.data, img_filename, nrow=1)
         _, enet_classes_ba = torch.max(image_outputs[6], dim=1, keepdim=False)
-        segm_filename_ba = '%s/segm_cat_ba_%08d.jpg' % (image_directory, iterations + 1)
+        _, enet_classes_ab = torch.max(image_outputs[7], dim=1, keepdim=False)
+        segm_filename = '%s/segm_cat_%08d.jpg' % (image_directory, iterations + 1)
         segm_image_ba = np.concatenate((np.squeeze(enet_classes_ba.data.cpu().numpy()), np.squeeze(labels_b.cpu().numpy())), axis=1)
-        cv2.imwrite(segm_filename_ba, segm_image_ba)
+        segm_image_ab = np.concatenate((np.squeeze(enet_classes_ab.data.cpu().numpy()), np.squeeze(labels_a.cpu().numpy())), axis=1)
+        segm_image = np.concatenate((segm_image_ba, segm_image_ab), axis=0)
+        cv2.imwrite(segm_filename, segm_image)
         write_html(snapshot_directory + "/index.html", iterations + 1, config.image_save_iterations, image_directory)
       elif (iterations + 1) % config.image_display_iterations == 0:
         img_filename = '%s/gen.jpg' % (image_directory)

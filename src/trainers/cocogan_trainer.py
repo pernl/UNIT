@@ -67,27 +67,36 @@ class COCOGANTrainer(nn.Module):
     ll_loss_aba = self.ll_loss_criterion_a(x_aba, images_a)
     ll_loss_bab = self.ll_loss_criterion_b(x_bab, images_b)
 
-    # Trying to include enet stuff
-    n_classes = 35
-    model = wrap_cuda(ENet(n_classes))
-    #checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar') # 19 classes
-    checkpoint = load_checkpoint('/staging/dadl/checkpoints/enet_pytorch/20180322_160509/checkpoint.pth.tar')
-    model.load_state_dict(checkpoint['state_dict'])
-    model.cuda()
-    model.eval()
-    labels_a_cuda = wrap_cuda(Variable(labels_a, volatile=False))
-    labels_b_cuda = wrap_cuda(Variable(labels_b, volatile=False))
-    segm_x_ab = model.forward(x_ab)[0]
-    segm_x_ba = model.forward(x_ba)[0]
-    segm_loss_a = self.feed_loss(segm_x_ab, labels_a_cuda)
-    segm_loss_b = self.feed_loss(segm_x_ba, labels_b_cuda)
+    segm_x_ba = None
+    segm_x_ab = None
+    # Feedback time
+    if labels_a is not None or labels_b is not None:
+      n_classes = 35
+      model = wrap_cuda(ENet(n_classes))
+      #checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar') # 19 classes
+      checkpoint = load_checkpoint('/staging/dadl/checkpoints/enet_pytorch/20180322_160509/checkpoint.pth.tar')
+      model.load_state_dict(checkpoint['state_dict'])
+      model.cuda()
+      model.eval()
+    if labels_a is not None:
+      labels_a_cuda = wrap_cuda(Variable(labels_a, volatile=False))
+      segm_x_ab = model.forward(x_ab)[0]
+      segm_loss_a = self.feed_loss(segm_x_ab, labels_a_cuda)
+    if labels_b is not None:
+      labels_b_cuda = wrap_cuda(Variable(labels_b, volatile=False))
+      segm_x_ba = model.forward(x_ba)[0]
+      segm_loss_b = self.feed_loss(segm_x_ba, labels_b_cuda)
 
     total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
                  hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
                  hyperparameters['ll_cycle_link_w'] * (ll_loss_aba + ll_loss_bab) + \
                  hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
-                 hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss) + \
-                 hyperparameters['feedback_weight'] * (segm_loss_a + segm_loss_b)
+                 hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss)
+    if labels_a is not None:
+      total_loss += hyperparameters['feedback_weight'] * segm_loss_a
+    if labels_b is not None:
+      total_loss += hyperparameters['feedback_weight'] * segm_loss_b
+
     total_loss.backward()
     self.gen_opt.step()
     self.gen_enc_loss = enc_loss.data.cpu().numpy()[0]
@@ -100,7 +109,6 @@ class COCOGANTrainer(nn.Module):
     self.gen_ll_loss_aba = ll_loss_aba.data.cpu().numpy()[0]
     self.gen_ll_loss_bab = ll_loss_bab.data.cpu().numpy()[0]
     self.gen_total_loss = total_loss.data.cpu().numpy()[0]
-    self.gen_segm_loss_b = segm_loss_b.data.cpu().numpy()[0]
     return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab, segm_x_ba, segm_x_ab)
 
   def dis_update(self, images_a, images_b, hyperparameters):

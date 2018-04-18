@@ -30,7 +30,8 @@ class dataset_image(data.Dataset):
     crop_img = self._load_one_image(self.images[index])
     raw_data = crop_img.transpose((2, 0, 1))  # convert to HWC
     data = ((torch.FloatTensor(raw_data)/255.0)-0.5)*2
-    return data
+    sample = {'data': data}
+    return sample
 
   def __len__(self):
     return self.dataset_size
@@ -52,7 +53,7 @@ class dataset_image(data.Dataset):
     crop_img = img[y_offset:(y_offset + self.crop_image_height), x_offset:(x_offset + self.crop_image_width), :]
     return crop_img
 
-class dataset_image_remix(data.Dataset):
+class dataset_image_label(data.Dataset):
 
   def __init__(self, specs):
     self.root = specs['root']

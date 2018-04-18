@@ -2,8 +2,8 @@
 # Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 train:
   snapshot_save_iterations: 5000 # How often do you want to save trained models
-  image_save_iterations: 10 # How often do you want to save output images during training
-  image_display_iterations: 10
+  image_save_iterations: 1000 # How often do you want to save output images during training
+  image_display_iterations: 1000
   display: 1 # How often do you want to log the training stats
   snapshot_prefix: /staging/dadl/gta2real_feedback_both/ # Where do you want to save the outputs
   hyperparameters:
@@ -41,7 +41,7 @@ train:
       scale: 0.47       # scaling factor for scaling image before processing
       crop_image_height: 480 # crop image size
       crop_image_width: 640  # crop image size
-      class_name: dataset_image_remix        # dataset class name
+      class_name: dataset_image_label        # dataset class name
       root: /staging/dadl/datasets/playingfordata10/imgs/      # dataset folder location
       root_lab: /staging/dadl/datasets/playingfordata10/labels_gray/      # dataset folder location
       folder: ./
@@ -52,8 +52,7 @@ train:
       scale: 0.47        # scaling factor for scaling image before processing
       crop_image_height: 480 # crop image size
       crop_image_width: 640  # crop image size
-      class_name: dataset_image_remix
-      #root: /staging/dadl/datasets/pix2pixHD/20/train_img/
+      class_name: dataset_image_label
       root: /staging/dadl/datasets/100/leftImg8bit/train/
       root_lab: /staging/dadl/datasets/100/gtFine/train/
       folder: ./

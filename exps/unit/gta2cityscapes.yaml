@@ -2,13 +2,14 @@
 # Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 train:
   snapshot_save_iterations: 5000 # How often do you want to save trained models
-  image_save_iterations: 2500 # How often do you want to save output images during training
-  image_display_iterations: 100
+  image_save_iterations: 10 # How often do you want to save output images during training
+  image_display_iterations: 10
   display: 1 # How often do you want to log the training stats
-  snapshot_prefix: /staging/dadl/gta2real_feedback/ # Where do you want to save the outputs
+  snapshot_prefix: /staging/dadl/gta2real_feedback_both/ # Where do you want to save the outputs
   hyperparameters:
     trainer: COCOGANTrainer
     lr: 0.0001             # learning rate
+    feedback_weight: 10  # weight on the feedback
     ll_direct_link_w: 100  # weight on the self L1 reconstruction loss
     kl_direct_link_w: 0.1 # weight on VAE encoding loss
     ll_cycle_link_w: 100   # weight on the cycle L1 reconstruction loss
@@ -40,12 +41,12 @@ train:
       scale: 0.47       # scaling factor for scaling image before processing
       crop_image_height: 480 # crop image size
       crop_image_width: 640  # crop image size
-      class_name: dataset_image        # dataset class name
-      root: /staging/dadl/datasets/playingfordata10/      # dataset folder location
-      #root_lab: /staging/dadl/datasets/playingfordata10/labels/      # dataset folder location
+      class_name: dataset_image_remix        # dataset class name
+      root: /staging/dadl/datasets/playingfordata10/imgs/      # dataset folder location
+      root_lab: /staging/dadl/datasets/playingfordata10/labels_gray/      # dataset folder location
       folder: ./
       list_name: list_GTA.txt  # image list
-      #list_name_lab: list_GTA_lab.txt
+      list_name_lab: list_GTA_lab.txt
     train_b: # Domain 2 dataset
       channels: 3       # image channel number
       scale: 0.47        # scaling factor for scaling image before processing

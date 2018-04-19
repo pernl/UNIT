@@ -16,9 +16,10 @@ parser = OptionParser()
 parser.add_option('--trans_alone', type=int, help="showing the translated image alone", default=0)
 parser.add_option('--a2b', type=int, help="1 for a2b and others for b2a", default=1)
 parser.add_option('--gpu', type=int, help="gpu id", default=0)
-parser.add_option('--config',type=str,help="net configuration")
-parser.add_option('--weights',type=str,help="file location to the trained generator network weights")
-parser.add_option('--output_folder',type=str,help="output image folder")
+parser.add_option('--config',type=str, help="net configuration")
+parser.add_option('--weights',type=str, help="file location to the trained generator network weights")
+parser.add_option('--output_folder',type=str, help="output image folder")
+parser.add_option('--n_samples_per_domain',type=int, help="Number of samples per domain", default=10)
 
 def main(argv):
   (opts, args) = parser.parse_args(argv)
@@ -27,17 +28,27 @@ def main(argv):
   assert isinstance(opts, object)
   config = NetConfig(opts.config)
 
-  ######################################################################################################################
   # Read training parameters from the yaml file
   hyperparameters = {}
   for key in config.hyperparameters:
     exec ('hyperparameters[\'%s\'] = config.hyperparameters[\'%s\']' % (key,key))
 
-  if opts.a2b==1:
-    dataset = config.datasets['train_a']
-  else:
-    dataset = config.datasets['train_b']
-  exec ("data = %s(dataset)" % dataset['class_name'])
+  cmd = "trainer=%s(config.hyperparameters)" % config.hyperparameters['trainer']
+  local_dict = locals()
+  exec(cmd,globals(),local_dict)
+  trainer = local_dict['trainer']
+
+  # Prepare network
+  trainer.gen.load_state_dict(torch.load(opts.weights))
+  trainer.cuda(opts.gpu)
+  test_domain('train_a', config, opts, trainer)
+  test_domain('train_b', config, opts, trainer)
+  test_domain('train_c', config, opts, trainer)
+  return 0
+
+def test_domain(domain_name, config, opts, trainer):
+  dataset = config.datasets[domain_name]
+  exec("data = %s(dataset)" % dataset['class_name'])
   root = dataset['root']
   folder = dataset['folder']
   list = dataset['list_name']
@@ -47,41 +58,40 @@ def main(argv):
   image_list = [x.strip().split(' ')[0] for x in content]
   image_list.sort()
 
-
-  cmd = "trainer=%s(config.hyperparameters)" % config.hyperparameters['trainer']
-  local_dict = locals()
-  exec(cmd,globals(),local_dict)
-  trainer = local_dict['trainer']
-
-
-  # Prepare network
-  trainer.gen.load_state_dict(torch.load(opts.weights))
-  trainer.cuda(opts.gpu)
-  # trainer.gen.eval()
-
+  n_samples = 1
   for image_name in image_list:
+    if n_samples > opts.n_samples_per_domain:
+      return
     print(image_name)
     full_img_name = os.path.join(root, folder, image_name)
-    img = data._load_one_image(full_img_name,test=True)
+    img = data._load_one_image(full_img_name, test=True)
     raw_data = img.transpose((2, 0, 1))  # convert to HWC
     final_data = torch.FloatTensor((raw_data / 255.0 - 0.5) * 2)
     final_data = final_data.contiguous()
     final_data = Variable(final_data.view(1,final_data.size(0),final_data.size(1),final_data.size(2))).cuda(opts.gpu)
     # trainer.gen.eval()
-    if opts.a2b == 1:
-      output_data = trainer.gen.forward_a2b(final_data)
+    if domain_name == 'train_a':
+      output_data_1 = trainer.gen.forward_a2b(final_data)
+      output_data_2 = trainer.gen.forward_a2c(final_data)
+    elif domain_name == 'train_b':
+      output_data_1 = trainer.gen.forward_b2a(final_data)
+      output_data_2 = trainer.gen.forward_b2c(final_data)
+    elif domain_name == 'train_c':
+      output_data_1 = trainer.gen.forward_c2a(final_data)
+      output_data_2 = trainer.gen.forward_c2b(final_data)
     else:
-      output_data = trainer.gen.forward_b2a(final_data)
+      print('Catastrophic error: Nothing to forward')
+      return 1
 
-    output_image_name = os.path.join(opts.output_folder, image_name)
+    output_image_name = os.path.join(opts.output_folder, domain_name, image_name)
     directory = os.path.dirname(output_image_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
 
     if opts.trans_alone == 0:
-      assembled_images = torch.cat((final_data, output_data[0]), 3)
+      assembled_images = torch.cat((final_data, output_data_1[0], output_data_2[0]), 3)
       torchvision.utils.save_image(assembled_images.data / 2.0 + 0.5, output_image_name)
-    else:
+    else:  #This is currently broken for multidomain
       output_img = output_data[0].data.cpu().numpy()
       new_output_img = np.transpose(output_img, [2, 3, 1, 0])
       new_output_img = new_output_img[:, :, :, 0]
@@ -89,10 +99,8 @@ def main(argv):
       out_img = cv2.cvtColor(out_img, cv2.COLOR_RGB2BGR)
       cv2.imwrite(output_image_name, out_img)
 
-
-  return 0
+    n_samples += 1
 
 
 if __name__ == '__main__':
   main(sys.argv)
-

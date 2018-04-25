@@ -38,8 +38,17 @@ class dataset_image(data.Dataset):
 
   def _load_one_image(self, img_name, test=False):
     img = cv2.cvtColor(cv2.imread(img_name), cv2.COLOR_BGR2RGB)
-    if self.scale > 0:
-      img = cv2.resize(img,None,fx=self.scale,fy=self.scale)
+    h, w, c = img.shape
+    # crop to aspect ratio of 2
+    if w / h != 2: #  TODO: change so that it is symmetric
+      h = w / 2
+      img = img[0:h, :, :]
+    if self.scale > 0: # DEPRECATED
+      img = cv2.resize(img,None,fx=self.scale,fy=self.scale, interpolation=cv2.INTER_AREA)
+    else:
+      assert w / self.crop_image_width == h /self.crop_image_height
+      scale_factor = self.crop_image_width / float(w) # Invert to downscale
+      img = cv2.resize(img, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
     img = np.float32(img)
     h, w, c = img.shape
     if test==True:
@@ -96,31 +105,28 @@ class dataset_image_label(data.Dataset):
   def __len__(self):
     return self.dataset_size
 
-  def _load_one_image(self, img_name, test=False):
-    img = cv2.cvtColor(cv2.imread(img_name), cv2.COLOR_BGR2RGB)
-    if self.scale > 0:
-      img = cv2.resize(img,None,fx=self.scale,fy=self.scale)
-    img = np.float32(img)
-    h, w, c = img.shape
-    if test==True:
-      x_offset = np.int( (w - self.crop_image_width)/2 )
-      y_offset = np.int( (h - self.crop_image_height)/2 )
-    else:
-      if np.random.rand(1) > 0.5:
-        img = cv2.flip(img, 1)
-      x_offset = np.int32(np.random.randint(0, w - self.crop_image_width + 1, 1))[0]
-      y_offset = np.int32(np.random.randint(0, h - self.crop_image_height + 1, 1))[0]
-    crop_img = img[y_offset:(y_offset + self.crop_image_height), x_offset:(x_offset + self.crop_image_width), :]
-    return crop_img
-
   def _load_one_image_and_lab(self, img_name, lab_name):
     img = cv2.cvtColor(cv2.imread(img_name), cv2.COLOR_BGR2RGB)
     lab = cv2.imread(lab_name, cv2.IMREAD_GRAYSCALE)
-    if self.scale > 0:
-      img = cv2.resize(img, None, fx=self.scale, fy=self.scale)
+    h, w, c = img.shape
+    # crop to aspect ratio of 2
+    if w / h != 2: #  TODO: change so that it is symmetric
+      h = w / 2
+      img = img[0:h, :, :]
+      lab = lab[0:h, :]
+    if self.scale > 0: # Deprecated
+      img = cv2.resize(img, None, fx=self.scale, fy=self.scale, interpolation=cv2.INTER_AREA)
       lab = cv2.resize(lab, None, fx=self.scale, fy=self.scale, interpolation=cv2.INTER_NEAREST)
+    else:
+      assert w / self.crop_image_width == h /self.crop_image_height
+      scale_factor = self.crop_image_width / float(w) # Invert to downscale
+      img = cv2.resize(img, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
+      lab = cv2.resize(lab, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_NEAREST)
     img = np.float32(img)
     h, w, c = img.shape
+    if np.random.rand(1) > 0.5:
+      img = cv2.flip(img, 1)
+      lab = cv2.flip(lab, 1)
     x_offset = np.int32(np.random.randint(0, w - self.crop_image_width + 1, 1))[0]
     y_offset = np.int32(np.random.randint(0, h - self.crop_image_height + 1, 1))[0]
     crop_img = img[y_offset:(y_offset + self.crop_image_height), x_offset:(x_offset + self.crop_image_width), :]

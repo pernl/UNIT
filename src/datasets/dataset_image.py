@@ -35,8 +35,17 @@ class dataset_image(data.Dataset):
 
   def _load_one_image(self, img_name, test=False):
     img = cv2.cvtColor(cv2.imread(img_name), cv2.COLOR_BGR2RGB)
-    if self.scale > 0:
-      img = cv2.resize(img,None,fx=self.scale,fy=self.scale)
+    h, w, c = img.shape
+    # crop to aspect ratio of 2
+    if w / h != 2: #  TODO: change so that it is symmetric
+      h = w / 2
+      img = img[0:h, :, :]
+    if self.scale > 0: # DEPRECATED
+      img = cv2.resize(img, None, fx=self.scale, fy=self.scale, interpolation=cv2.INTER_AREA)
+    else:
+      assert w / self.crop_image_width == h /self.crop_image_height
+      scale_factor = self.crop_image_width / float(w) # Invert to downscale
+      img = cv2.resize(img, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_AREA)
     img = np.float32(img)
     h, w, c = img.shape
     if test==True:

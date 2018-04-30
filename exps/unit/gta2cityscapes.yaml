@@ -5,7 +5,7 @@ train:
   image_save_iterations: 1000 # How often do you want to save output images during training
   image_display_iterations: 1000
   display: 1 # How often do you want to log the training stats
-  snapshot_prefix: /staging/dadl/gta2real_useless_test/ # Where do you want to save the outputs
+  snapshot_prefix: /staging/dadl/gta2real_feedback_useless_test/ # Where do you want to save the outputs
   hyperparameters:
     trainer: COCOGANTrainer
     lr: 0.0001             # learning rate
@@ -43,10 +43,10 @@ train:
       crop_image_width: 512  # crop image size
       class_name: dataset_image        # dataset class name
       root: /staging/dadl/datasets/playingfordata10/imgs/      # dataset folder location
-      #root_lab: /staging/dadl/datasets/playingfordata10/labels_gray/      # dataset folder location
+      root_lab: /staging/dadl/datasets/playingfordata10/labels_gray/      # dataset folder location
       folder: ./
-      list_name: list_GTA.txt  # image list
-      list_name_lab: list_GTA_lab.txt
+      list_name: new_list_GTA.txt  # image list no night 2018-04-30
+      list_name_lab: new_list_GTA_lab.txt # label list no night 2018-04-30
     train_b: # Domain 2 dataset
       channels: 3       # image channel number
       scale: 0        # scaling factor for scaling image before processing, DEPRECATED

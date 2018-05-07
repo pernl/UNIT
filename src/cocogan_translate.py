@@ -12,6 +12,8 @@ import cv2
 import torchvision
 from tools import *
 from optparse import OptionParser
+from projects.pt_semantic_segmentation.lib.enet import ENet
+from zoo.pytorch.utils import save_checkpoint, wrap_cuda, load_checkpoint
 parser = OptionParser()
 parser.add_option('--trans_alone', type=int, help="showing the translated image alone", default=0)
 parser.add_option('--a2b', type=int, help="1 for a2b and others for b2a", default=1)
@@ -19,6 +21,17 @@ parser.add_option('--gpu', type=int, help="gpu id", default=0)
 parser.add_option('--config',type=str,help="net configuration")
 parser.add_option('--weights',type=str,help="file location to the trained generator network weights")
 parser.add_option('--output_folder',type=str,help="output image folder")
+parser.add_option('--save_segm', type=int, help="save segmentation of output image", default=0)
+
+def init_segmentation():
+  n_classes = 35
+  segm_model = wrap_cuda(ENet(n_classes))
+  #checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar') # 19 classes
+  checkpoint = load_checkpoint('/staging/dadl/checkpoints/enet_pytorch/20180322_160509/checkpoint.pth.tar')
+  segm_model.load_state_dict(checkpoint['state_dict'])
+  segm_model.cuda()
+  segm_model.eval()
+  return segm_model
 
 def main(argv):
   (opts, args) = parser.parse_args(argv)
@@ -47,17 +60,18 @@ def main(argv):
   image_list = [x.strip().split(' ')[0] for x in content]
   image_list.sort()
 
-
   cmd = "trainer=%s(config.hyperparameters)" % config.hyperparameters['trainer']
   local_dict = locals()
   exec(cmd,globals(),local_dict)
   trainer = local_dict['trainer']
 
-
   # Prepare network
   trainer.gen.load_state_dict(torch.load(opts.weights))
   trainer.cuda(opts.gpu)
   # trainer.gen.eval()
+
+  if opts.save_segm == 1:
+    segm_model = init_segmentation()
 
   for image_name in image_list:
     print(image_name)
@@ -79,7 +93,14 @@ def main(argv):
         os.makedirs(directory)
 
     if opts.trans_alone == 0:
-      assembled_images = torch.cat((final_data, output_data[0]), 3)
+      if opts.save_segm == 1:
+        segm_image__gt = segm_model.forward(final_data)[0]
+        _, max_segm_image = torch.max(segm_image__gt, dim=1, keepdim=True)
+        max_segm_image_gt = max_segm_image.expand(final_data.size()).float()
+        max_segm_image_gt.data = (max_segm_image_gt.data / 35.0 - 0.5) *2 # 35 classes
+        assembled_images = torch.cat((final_data, output_data[0], max_segm_image_gt), 3)
+      else:
+        assembled_images = torch.cat((final_data, output_data[0]), 3)
       torchvision.utils.save_image(assembled_images.data / 2.0 + 0.5, output_image_name)
     else:
       output_img = output_data[0].data.cpu().numpy()
@@ -88,11 +109,8 @@ def main(argv):
       out_img = np.uint8(255 * (new_output_img / 2.0 + 0.5))
       out_img = cv2.cvtColor(out_img, cv2.COLOR_RGB2BGR)
       cv2.imwrite(output_image_name, out_img)
-
-
   return 0
 
 
 if __name__ == '__main__':
   main(sys.argv)
-

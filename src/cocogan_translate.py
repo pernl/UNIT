@@ -102,6 +102,7 @@ def main(argv):
       else:
         assembled_images = torch.cat((final_data, output_data[0]), 3)
       torchvision.utils.save_image(assembled_images.data / 2.0 + 0.5, output_image_name)
+      del assembled_images
     else:
       output_img = output_data[0].data.cpu().numpy()
       new_output_img = np.transpose(output_img, [2, 3, 1, 0])

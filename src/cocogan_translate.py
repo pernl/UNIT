@@ -109,6 +109,8 @@ def main(argv):
       out_img = np.uint8(255 * (new_output_img / 2.0 + 0.5))
       out_img = cv2.cvtColor(out_img, cv2.COLOR_RGB2BGR)
       cv2.imwrite(output_image_name, out_img)
+    del output_data
+    del final_data
   return 0
 
 

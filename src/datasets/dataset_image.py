@@ -44,7 +44,7 @@ class dataset_image(data.Dataset):
       h = w / 2
       img = img[0:h, :, :]
     if self.scale > 0: # DEPRECATED
-      img = cv2.resize(img,None,fx=self.scale,fy=self.scale, interpolation=cv2.INTER_AREA)
+      img = cv2.resize(img, None, fx=self.scale, fy=self.scale, interpolation=cv2.INTER_AREA)
     else:
       assert w / self.crop_image_width == h /self.crop_image_height
       scale_factor = self.crop_image_width / float(w) # Invert to downscale

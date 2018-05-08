@@ -7,7 +7,6 @@ import os
 import numpy as np
 import cv2
 import torch
-import random
 import torch.utils.data as data
 
 class dataset_image(data.Dataset):
@@ -90,7 +89,7 @@ class dataset_image_label(data.Dataset):
     Python wizardry
     """
     tmp_combined_list = list(zip(self.images, self.labels))
-    random.shuffle(tmp_combined_list)
+    np.random.shuffle(tmp_combined_list)
     self.images, self.labels = zip(*tmp_combined_list)
 
   def __getitem__(self, index, test=False):

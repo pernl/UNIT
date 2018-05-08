@@ -38,16 +38,16 @@ train:
   datasets:
     train_a: # Domain 1 dataset
       channels: 3       # image channel number
-      scale: 0       # scaling factor for scaling image before processing, DEPRECATED
+      scale: 0.6       # scaling factor for scaling image before processing
       crop_image_height: 512 # crop image size
       crop_image_width: 1024  # crop image size
       class_name: dataset_image        # dataset class name
       root: /staging/dadl/datasets/playingfordata10/imgs/      # dataset folder location
       folder: ./
-      list_name: list_GTA.txt  # image list
+      list_name: new_list_GTA.txt  # image list
     train_b: # Domain 2 dataset
       channels: 3       # image channel number
-      scale: 0        # scaling factor for scaling image before processing, DEPRECATED
+      scale: 0.6        # scaling factor for scaling image before processing
       crop_image_height: 512 # crop image size
       crop_image_width: 1024  # crop image size
       class_name: dataset_image

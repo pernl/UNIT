@@ -90,6 +90,11 @@ def main(argv):
       if iterations >= max_iterations:
         return
 
+      del images_a
+      del images_b
+      del image_outputs
+      del assembled_images
+
 if __name__ == '__main__':
   main(sys.argv)
 

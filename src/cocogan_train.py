@@ -114,6 +114,8 @@ def main(argv):
       del images_b
       del image_outputs
       del assembled_images
+      del labels_a
+      del labels_b
 
 if __name__ == '__main__':
   main(sys.argv)

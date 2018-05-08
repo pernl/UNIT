@@ -21,13 +21,13 @@ class dataset_image(data.Dataset):
     self.crop_image_width = specs['crop_image_width']
     list_fullpath = os.path.join(self.root, self.list_name)
     with open(list_fullpath) as f:
-      content = f.readlines()
-    self.images = [os.path.join(self.root, self.folder, x.strip().split(' ')[0]) for x in content]
+      self.image_names = f.readlines()
+    self.images = [os.path.join(self.root, self.folder, x.strip().split(' ')[0]) for x in self.image_names]
     np.random.shuffle(self.images)
     self.dataset_size = len(self.images)
 
-  def __getitem__(self, index):
-    crop_img = self._load_one_image(self.images[index])
+  def __getitem__(self, index, test=False):
+    crop_img = self._load_one_image(self.images[index], test)
     raw_data = crop_img.transpose((2, 0, 1))  # convert to HWC
     data = ((torch.FloatTensor(raw_data)/255.0)-0.5)*2
     sample = {'data': data}
@@ -76,11 +76,11 @@ class dataset_image_label(data.Dataset):
     list_fullpath = os.path.join(self.root, self.list_name)
     list_fullpath_lab = os.path.join(self.root_lab, self.list_name_lab)
     with open(list_fullpath) as f:
-      content = f.readlines()
+      self.image_names = f.readlines()
     with open(list_fullpath_lab) as f_lab:
-      content_lab = f_lab.readlines()
-    self.images = [os.path.join(self.root, self.folder, x.strip().split(' ')[0]) for x in content]
-    self.labels = [os.path.join(self.root_lab, self.folder, x.strip().split(' ')[0]) for x in content_lab]
+      self.lab_names = f_lab.readlines()
+    self.images = [os.path.join(self.root, self.folder, x.strip().split(' ')[0]) for x in self.image_names]
+    self.labels = [os.path.join(self.root_lab, self.folder, x.strip().split(' ')[0]) for x in self.lab_names]
     assert len(self.images) == len(self.labels)
     self.dataset_size = len(self.images)
     self._shuffle_list()
@@ -93,8 +93,8 @@ class dataset_image_label(data.Dataset):
     random.shuffle(tmp_combined_list)
     self.images, self.labels = zip(*tmp_combined_list)
 
-  def __getitem__(self, index):
-    crop_img, crop_lab = self._load_one_image_and_lab(self.images[index], self.labels[index])
+  def __getitem__(self, index, test=False):
+    crop_img, crop_lab = self._load_one_image(self.images[index], self.labels[index], test)
     raw_data = crop_img.transpose((2, 0, 1))  # convert to HWC
     #raw_lab = crop_lab.transpose((2, 0, 1))
     data_lab =torch.LongTensor(crop_lab) # Don't acutally need a FloatTensor, Bytetensor should be enough, but enet impl
@@ -105,7 +105,7 @@ class dataset_image_label(data.Dataset):
   def __len__(self):
     return self.dataset_size
 
-  def _load_one_image_and_lab(self, img_name, lab_name):
+  def _load_one_image(self, img_name, lab_name, test=False):
     img = cv2.cvtColor(cv2.imread(img_name), cv2.COLOR_BGR2RGB)
     lab = cv2.imread(lab_name, cv2.IMREAD_GRAYSCALE)
     h, w, c = img.shape
@@ -124,11 +124,15 @@ class dataset_image_label(data.Dataset):
       lab = cv2.resize(lab, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_NEAREST)
     img = np.float32(img)
     h, w, c = img.shape
-    if np.random.rand(1) > 0.5:
-      img = cv2.flip(img, 1)
-      lab = cv2.flip(lab, 1)
-    x_offset = np.int32(np.random.randint(0, w - self.crop_image_width + 1, 1))[0]
-    y_offset = np.int32(np.random.randint(0, h - self.crop_image_height + 1, 1))[0]
+    if test==True:
+      x_offset = np.int( (w - self.crop_image_width)/2 )
+      y_offset = np.int( (h - self.crop_image_height)/2 )
+    else:
+      if np.random.rand(1) > 0.5:
+        img = cv2.flip(img, 1)
+        lab = cv2.flip(lab, 1)
+      x_offset = np.int32(np.random.randint(0, w - self.crop_image_width + 1, 1))[0]
+      y_offset = np.int32(np.random.randint(0, h - self.crop_image_height + 1, 1))[0]
     crop_img = img[y_offset:(y_offset + self.crop_image_height), x_offset:(x_offset + self.crop_image_width), :]
     crop_lab = lab[y_offset:(y_offset + self.crop_image_height), x_offset:(x_offset + self.crop_image_width)]
     return crop_img, crop_lab

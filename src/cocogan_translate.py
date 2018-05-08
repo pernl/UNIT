@@ -51,14 +51,6 @@ def main(argv):
   else:
     dataset = config.datasets['train_b']
   exec ("data = %s(dataset)" % dataset['class_name'])
-  root = dataset['root']
-  folder = dataset['folder']
-  list = dataset['list_name']
-  list_fullpath = os.path.join(root, list)
-  with open(list_fullpath) as f:
-    content = f.readlines()
-  image_list = [x.strip().split(' ')[0] for x in content]
-  image_list.sort()
 
   cmd = "trainer=%s(config.hyperparameters)" % config.hyperparameters['trainer']
   local_dict = locals()
@@ -73,13 +65,12 @@ def main(argv):
   if opts.save_segm == 1:
     segm_model = init_segmentation()
 
-  for image_name in image_list:
+  for ind in range(0, data.dataset_size):
+    image_name = data.image_names[ind].rstrip() # rstrip removes trailing ws
     print(image_name)
-    full_img_name = os.path.join(root, folder, image_name)
-    img = data._load_one_image(full_img_name,test=True)
-    raw_data = img.transpose((2, 0, 1))  # convert to HWC
-    final_data = torch.FloatTensor((raw_data / 255.0 - 0.5) * 2)
-    final_data = final_data.contiguous()
+    img_data = data.__getitem__(ind, test=True)
+    img = img_data['data']
+    final_data = img.contiguous()
     final_data = Variable(final_data.view(1,final_data.size(0),final_data.size(1),final_data.size(2))).cuda(opts.gpu)
     # trainer.gen.eval()
     if opts.a2b == 1:
@@ -101,7 +92,15 @@ def main(argv):
         rgb_size = max_segm.data.cpu().numpy().shape
         max_segm = max_segm.expand(rgb_size[0], 3, rgb_size[2], rgb_size[3]).float()
         max_segm.data = (max_segm.data / 35.0 - 0.5) *2 # 35 classes
-        assembled_images = torch.cat((final_data, output_data[0], max_segm), 3)
+        labels = img_data.get("data_lab")
+        if labels is not None:
+          labels = wrap_cuda(Variable(labels, volatile=False))
+          label_size = final_data.size()
+          labels = labels.expand(label_size).float()
+          labels.data = (labels.data / 35.0 - 0.5) *2
+          assembled_images = torch.cat((final_data, output_data[0], max_segm, labels), 3)
+        else:
+          assembled_images = torch.cat((final_data, output_data[0], max_segm), 3)
       else:
         assembled_images = torch.cat((final_data, output_data[0]), 3)
       torchvision.utils.save_image(assembled_images.data / 2.0 + 0.5, output_image_name)

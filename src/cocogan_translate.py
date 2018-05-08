@@ -94,11 +94,14 @@ def main(argv):
 
     if opts.trans_alone == 0:
       if opts.save_segm == 1:
-        segm_image__gt = segm_model.forward(final_data)[0]
-        _, max_segm_image = torch.max(segm_image__gt, dim=1, keepdim=True)
-        max_segm_image_gt = max_segm_image.expand(final_data.size()).float()
-        max_segm_image_gt.data = (max_segm_image_gt.data / 35.0 - 0.5) *2 # 35 classes
-        assembled_images = torch.cat((final_data, output_data[0], max_segm_image_gt), 3)
+        segm_image_org = segm_model.forward(final_data)[0]
+        segm_image_out = segm_model.forward(output_data[0])[0]
+        segm = torch.cat((segm_image_org, segm_image_out), 3)
+        _, max_segm = torch.max(segm, dim=1, keepdim=True)
+        rgb_size = max_segm.data.cpu().numpy().shape
+        max_segm = max_segm.expand(rgb_size[0], 3, rgb_size[2], rgb_size[3]).float()
+        max_segm.data = (max_segm.data / 35.0 - 0.5) *2 # 35 classes
+        assembled_images = torch.cat((final_data, output_data[0], max_segm), 3)
       else:
         assembled_images = torch.cat((final_data, output_data[0]), 3)
       torchvision.utils.save_image(assembled_images.data / 2.0 + 0.5, output_image_name)

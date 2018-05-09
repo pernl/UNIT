@@ -29,7 +29,6 @@ def main(argv):
   (opts, args) = parser.parse_args(argv)
 
   seed = 0
-  torch.cuda.manual_seed(seed)  # Set seed for deterministic, is this enough?
   torch.manual_seed(seed)
   np.random.seed(seed=seed)
 
@@ -52,7 +51,6 @@ def main(argv):
   iterations = 0
   if opts.resume == 1:
     iterations = trainer.resume(config.snapshot_prefix)
-  trainer.cuda(opts.gpu)
 
   ######################################################################################################################
   # Setup logger and repare image outputs
@@ -67,8 +65,8 @@ def main(argv):
       labels_b = data_b.get("data_lab")
       if images_a.size(0) != batch_size or images_b.size(0) != batch_size:
         continue
-      images_a = Variable(images_a.cuda(opts.gpu))
-      images_b = Variable(images_b.cuda(opts.gpu))
+      images_a = Variable(images_a)
+      images_b = Variable(images_b)
 
       # Main training code
       trainer.dis_update(images_a, images_b, config.hyperparameters)

@@ -38,11 +38,6 @@ class COCOSharedDis(nn.Module):
     model += [nn.Conv2d(tch, 1, kernel_size=1, stride=1, padding=0)]  # 1
     return nn.Sequential(*model)
 
-  def cuda(self,gpu):
-    self.model_A.cuda(gpu)
-    self.model_B.cuda(gpu)
-    self.model_S.cuda(gpu)
-
   def forward(self, x_A, x_B):
     out_A = self.model_S(self.model_A(x_A))
     out_A = out_A.view(-1)
@@ -80,15 +75,6 @@ class COCOMsDis(nn.Module):
       tch *= 2
     model += [nn.Conv2d(tch, 1, kernel_size=1, stride=1, padding=0)]  # 1
     return nn.Sequential(*model)
-
-  def cuda(self,gpu):
-    self.model_1_A.cuda(gpu)
-    self.model_2_A.cuda(gpu)
-    self.model_4_A.cuda(gpu)
-    self.model_1_B.cuda(gpu)
-    self.model_2_B.cuda(gpu)
-    self.model_4_B.cuda(gpu)
-    self.downsampler.cuda(gpu)
 
   def forward(self, x_A, x_B):
     return self.forward_A(x_A), self.forward_B(x_B)
@@ -141,10 +127,6 @@ class COCODis(nn.Module):
       tch *= 2
     model += [nn.Conv2d(tch, 1, kernel_size=1, stride=1, padding=0)]  # 1
     return nn.Sequential(*model)
-
-  def cuda(self,gpu):
-    self.model_A.cuda(gpu)
-    self.model_B.cuda(gpu)
 
   def forward(self, x_A, x_B):
     out_A = self.model_A(x_A)

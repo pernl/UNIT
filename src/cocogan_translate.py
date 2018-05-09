@@ -12,8 +12,6 @@ import cv2
 import torchvision
 from tools import *
 from optparse import OptionParser
-from projects.pt_semantic_segmentation.lib.enet import ENet
-from zoo.pytorch.utils import save_checkpoint, wrap_cuda, load_checkpoint
 parser = OptionParser()
 parser.add_option('--trans_alone', type=int, help="showing the translated image alone", default=0)
 parser.add_option('--a2b', type=int, help="1 for a2b and others for b2a", default=1)
@@ -22,16 +20,6 @@ parser.add_option('--config',type=str,help="net configuration")
 parser.add_option('--weights',type=str,help="file location to the trained generator network weights")
 parser.add_option('--output_folder',type=str,help="output image folder")
 parser.add_option('--save_segm', type=int, help="save segmentation of output image", default=0)
-
-def init_segmentation():
-  n_classes = 35
-  segm_model = wrap_cuda(ENet(n_classes))
-  #checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar') # 19 classes
-  checkpoint = load_checkpoint('/staging/dadl/checkpoints/enet_pytorch/20180322_160509/checkpoint.pth.tar')
-  segm_model.load_state_dict(checkpoint['state_dict'])
-  segm_model.cuda()
-  segm_model.eval()
-  return segm_model
 
 def main(argv):
   (opts, args) = parser.parse_args(argv)
@@ -59,11 +47,7 @@ def main(argv):
 
   # Prepare network
   trainer.gen.load_state_dict(torch.load(opts.weights))
-  trainer.cuda(opts.gpu)
   # trainer.gen.eval()
-
-  if opts.save_segm == 1:
-    segm_model = init_segmentation()
 
   for ind in range(0, data.dataset_size):
     image_name = data.image_names[ind].rstrip() # rstrip removes trailing ws
@@ -71,7 +55,7 @@ def main(argv):
     img_data = data.__getitem__(ind, test=True)
     img = img_data['data']
     final_data = img.contiguous()
-    final_data = Variable(final_data.view(1,final_data.size(0),final_data.size(1),final_data.size(2))).cuda(opts.gpu)
+    final_data = Variable(final_data.view(1,final_data.size(0),final_data.size(1),final_data.size(2)))
     # trainer.gen.eval()
     if opts.a2b == 1:
       output_data = trainer.gen.forward_a2b(final_data)
@@ -84,25 +68,7 @@ def main(argv):
         os.makedirs(directory)
 
     if opts.trans_alone == 0:
-      if opts.save_segm == 1:
-        segm_image_org = segm_model.forward(final_data)[0]
-        segm_image_out = segm_model.forward(output_data[0])[0]
-        segm = torch.cat((segm_image_org, segm_image_out), 3)
-        _, max_segm = torch.max(segm, dim=1, keepdim=True)
-        rgb_size = max_segm.data.cpu().numpy().shape
-        max_segm = max_segm.expand(rgb_size[0], 3, rgb_size[2], rgb_size[3]).float()
-        max_segm.data = (max_segm.data / 35.0 - 0.5) *2 # 35 classes
-        labels = img_data.get("data_lab")
-        if labels is not None:
-          labels = wrap_cuda(Variable(labels, volatile=False))
-          label_size = final_data.size()
-          labels = labels.expand(label_size).float()
-          labels.data = (labels.data / 35.0 - 0.5) *2
-          assembled_images = torch.cat((final_data, output_data[0], max_segm, labels), 3)
-        else:
-          assembled_images = torch.cat((final_data, output_data[0], max_segm), 3)
-      else:
-        assembled_images = torch.cat((final_data, output_data[0]), 3)
+      assembled_images = torch.cat((final_data, output_data[0]), 3)
       torchvision.utils.save_image(assembled_images.data / 2.0 + 0.5, output_image_name)
       del assembled_images
     else:

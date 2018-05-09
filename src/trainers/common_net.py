@@ -26,9 +26,6 @@ class GaussianSmoother(nn.Module):
     out = nn.functional.conv2d(out, self.blur_kernel, groups=3)
     return out
 
-  def cuda(self, gpu):
-    self.blur_kernel = self.blur_kernel.cuda(gpu)
-
 class GaussianNoiseLayer(nn.Module):
   def __init__(self,):
     super(GaussianNoiseLayer, self).__init__()
@@ -36,7 +33,7 @@ class GaussianNoiseLayer(nn.Module):
   def forward(self, x):
     if self.training == False:
       return x
-    noise = Variable(torch.randn(x.size()).cuda(x.data.get_device()))
+    noise = Variable(torch.randn(x.size()))
     return x + noise
 
 class GaussianVAE2D(nn.Module):
@@ -61,7 +58,7 @@ class GaussianVAE2D(nn.Module):
   def sample(self, x):
     mu = self.en_mu(x)
     sd = self.softplus(self.en_sigma(x))
-    noise = Variable(torch.randn(mu.size(0), mu.size(1), mu.size(2), mu.size(3))).cuda(x.data.get_device())
+    noise = Variable(torch.randn(mu.size(0), mu.size(1), mu.size(2), mu.size(3)))
     return mu + sd.mul(noise), mu, sd
 
 class Bias2d(nn.Module):

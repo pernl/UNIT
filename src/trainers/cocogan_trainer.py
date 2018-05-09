@@ -9,8 +9,6 @@ import torch
 import torch.nn as nn
 import os
 import itertools
-from projects.pt_semantic_segmentation.lib.enet import ENet
-from zoo.pytorch.utils import save_checkpoint, wrap_cuda, load_checkpoint
 
 
 class COCOGANTrainer(nn.Module):
@@ -51,7 +49,7 @@ class COCOGANTrainer(nn.Module):
     for it, (out_a, out_b) in enumerate(itertools.izip(outs_a, outs_b)):
       outputs_a = nn.functional.sigmoid(out_a)
       outputs_b = nn.functional.sigmoid(out_b)
-      all_ones = Variable(torch.ones((outputs_a.size(0))).cuda(self.gpu))
+      all_ones = Variable(torch.ones((outputs_a.size(0))))
       if it==0:
         ad_loss_a = nn.functional.binary_cross_entropy(outputs_a, all_ones)
         ad_loss_b = nn.functional.binary_cross_entropy(outputs_b, all_ones)
@@ -69,23 +67,6 @@ class COCOGANTrainer(nn.Module):
 
     segm_x_ba = None
     segm_x_ab = None
-    # Feedback time
-    if labels_a is not None or labels_b is not None:
-      n_classes = 35
-      model = wrap_cuda(ENet(n_classes))
-      #checkpoint = load_checkpoint('/staging/experiments/domain_adaptation/cityscapes_segmentation/20171202_202723/model_best.pth.tar') # 19 classes
-      checkpoint = load_checkpoint('/staging/dadl/checkpoints/enet_pytorch/20180322_160509/checkpoint.pth.tar')
-      model.load_state_dict(checkpoint['state_dict'])
-      model.cuda()
-      model.eval()
-    if labels_a is not None:
-      labels_a_cuda = wrap_cuda(Variable(labels_a, volatile=False))
-      segm_x_ab = model.forward(x_ab)[0]
-      segm_loss_a = self.feed_loss(segm_x_ab, labels_a_cuda)
-    if labels_b is not None:
-      labels_b_cuda = wrap_cuda(Variable(labels_b, volatile=False))
-      segm_x_ba = model.forward(x_ba)[0]
-      segm_loss_b = self.feed_loss(segm_x_ba, labels_b_cuda)
 
     total_loss = hyperparameters['gan_w'] * (ad_loss_a + ad_loss_b) + \
                  hyperparameters['ll_direct_link_w'] * (ll_loss_a + ll_loss_b) + \
@@ -93,22 +74,12 @@ class COCOGANTrainer(nn.Module):
                  hyperparameters['kl_direct_link_w'] * (enc_loss + enc_loss) + \
                  hyperparameters['kl_cycle_link_w'] * (enc_bab_loss + enc_aba_loss)
     if labels_a is not None:
-      total_loss += hyperparameters['feedback_weight'] * segm_loss_a
+      total_loss += hyperparameters['feedback_weight']
     if labels_b is not None:
-      total_loss += hyperparameters['feedback_weight'] * segm_loss_b
+      total_loss += hyperparameters['feedback_weight']
 
     total_loss.backward()
     self.gen_opt.step()
-    self.gen_enc_loss = enc_loss.data.cpu().numpy()[0]
-    self.gen_enc_bab_loss = enc_bab_loss.data.cpu().numpy()[0]
-    self.gen_enc_aba_loss = enc_aba_loss.data.cpu().numpy()[0]
-    self.gen_ad_loss_a = ad_loss_a.data.cpu().numpy()[0]
-    self.gen_ad_loss_b = ad_loss_b.data.cpu().numpy()[0]
-    self.gen_ll_loss_a = ll_loss_a.data.cpu().numpy()[0]
-    self.gen_ll_loss_b = ll_loss_b.data.cpu().numpy()[0]
-    self.gen_ll_loss_aba = ll_loss_aba.data.cpu().numpy()[0]
-    self.gen_ll_loss_bab = ll_loss_bab.data.cpu().numpy()[0]
-    self.gen_total_loss = total_loss.data.cpu().numpy()[0]
     return (x_aa, x_ba, x_ab, x_bb, x_aba, x_bab, segm_x_ba, segm_x_ab)
 
   def dis_update(self, images_a, images_b, hyperparameters):
@@ -126,8 +97,8 @@ class COCOGANTrainer(nn.Module):
       out_true_b, out_fake_b = torch.split(out_b, out_b.size(0) // 2, 0)
       out_true_n = out_true_a.size(0)
       out_fake_n = out_fake_a.size(0)
-      all1 = Variable(torch.ones((out_true_n)).cuda(self.gpu))
-      all0 = Variable(torch.zeros((out_fake_n)).cuda(self.gpu))
+      all1 = Variable(torch.ones(out_true_n))
+      all0 = Variable(torch.zeros(out_fake_n))
       ad_true_loss_a = nn.functional.binary_cross_entropy(out_true_a, all1)
       ad_true_loss_b = nn.functional.binary_cross_entropy(out_true_b, all1)
       ad_fake_loss_a = nn.functional.binary_cross_entropy(out_fake_a, all0)
@@ -179,11 +150,6 @@ class COCOGANTrainer(nn.Module):
     dis_filename = '%s_dis_%08d.pkl' % (snapshot_prefix, iterations + 1)
     torch.save(self.gen.state_dict(), gen_filename)
     torch.save(self.dis.state_dict(), dis_filename)
-
-  def cuda(self, gpu):
-    self.gpu = gpu
-    self.dis.cuda(gpu)
-    self.gen.cuda(gpu)
 
   def normalize_image(self, x):
     return x[:,0:3,:,:] / 2 + 0.5

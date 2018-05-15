@@ -11,7 +11,7 @@ import torch.utils.data as data
 
 class dataset_image(data.Dataset):
 
-  def __init__(self, specs):
+  def __init__(self, specs, test=False):
     self.root = specs['root']
     self.folder = specs['folder']
     self.list_name = specs['list_name']
@@ -22,7 +22,8 @@ class dataset_image(data.Dataset):
     with open(list_fullpath) as f:
       self.image_names = f.readlines()
     self.images = [os.path.join(self.root, self.folder, x.strip().split(' ')[0]) for x in self.image_names]
-    np.random.shuffle(self.images)
+    if not test:
+      np.random.shuffle(self.images)
     self.dataset_size = len(self.images)
 
   def __getitem__(self, index, test=False):
@@ -63,7 +64,7 @@ class dataset_image(data.Dataset):
 
 class dataset_image_label(data.Dataset):
 
-  def __init__(self, specs):
+  def __init__(self, specs, test=False):
     self.root = specs['root']
     self.folder = specs['folder']
     self.list_name = specs['list_name']
@@ -82,7 +83,8 @@ class dataset_image_label(data.Dataset):
     self.labels = [os.path.join(self.root_lab, self.folder, x.strip().split(' ')[0]) for x in self.lab_names]
     assert len(self.images) == len(self.labels)
     self.dataset_size = len(self.images)
-    self._shuffle_list()
+    if not test:
+      self._shuffle_list()
 
   def _shuffle_list(self):
     """Randomise list order while keeping (image, label) pair intact

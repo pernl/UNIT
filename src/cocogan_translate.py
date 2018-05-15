@@ -14,6 +14,8 @@ from tools import *
 from optparse import OptionParser
 from projects.pt_semantic_segmentation.lib.enet import ENet
 from zoo.pytorch.utils import save_checkpoint, wrap_cuda, load_checkpoint
+import torch
+import numpy as np
 parser = OptionParser()
 parser.add_option('--trans_alone', type=int, help="showing the translated image alone", default=0)
 parser.add_option('--a2b', type=int, help="1 for a2b and others for b2a", default=1)
@@ -40,6 +42,11 @@ def main(argv):
   assert isinstance(opts, object)
   config = NetConfig(opts.config)
 
+  seed = 0
+  torch.cuda.manual_seed(seed)
+  torch.manual_seed(seed)
+  np.random.seed(seed=seed)
+
   ######################################################################################################################
   # Read training parameters from the yaml file
   hyperparameters = {}
@@ -50,7 +57,7 @@ def main(argv):
     dataset = config.datasets['train_a']
   else:
     dataset = config.datasets['train_b']
-  exec ("data = %s(dataset)" % dataset['class_name'])
+  exec ("data = %s(dataset, test=True)" % dataset['class_name'])
 
   cmd = "trainer=%s(config.hyperparameters)" % config.hyperparameters['trainer']
   local_dict = locals()

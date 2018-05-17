@@ -112,7 +112,7 @@ class dataset_image_label(data.Dataset):
     h, w, c = img.shape
     # crop to aspect ratio of 2
     if w / h != 2: #  TODO: change so that it is symmetric
-      h = w / 2
+      h = int(w / 2)
       img = img[0:h, :, :]
       lab = lab[0:h, :]
     if self.scale > 0: # Deprecated

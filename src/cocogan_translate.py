@@ -16,6 +16,8 @@ from projects.pt_semantic_segmentation.lib.enet import ENet
 from zoo.pytorch.utils import save_checkpoint, wrap_cuda, load_checkpoint
 import torch
 import numpy as np
+from color_map import CityscapesColorMap
+
 parser = OptionParser()
 parser.add_option('--trans_alone', type=int, help="showing the translated image alone", default=0)
 parser.add_option('--a2b', type=int, help="1 for a2b and others for b2a", default=1)
@@ -64,6 +66,7 @@ def main(argv):
   exec(cmd,globals(),local_dict)
   trainer = local_dict['trainer']
 
+  map_ = CityscapesColorMap()
   # Prepare network
   trainer.gen.load_state_dict(torch.load(opts.weights))
   trainer.cuda(opts.gpu)
@@ -85,7 +88,7 @@ def main(argv):
     else:
       output_data = trainer.gen.forward_b2a(final_data)
 
-    output_image_name = os.path.join(opts.output_folder, image_name)
+    output_image_name = os.path.join(opts.output_folder, os.path.basename(image_name))
     directory = os.path.dirname(output_image_name)
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -96,18 +99,26 @@ def main(argv):
         segm_image_out = segm_model.forward(output_data[0])[0]
         segm = torch.cat((segm_image_org, segm_image_out), 3)
         _, max_segm = torch.max(segm, dim=1, keepdim=True)
-        rgb_size = max_segm.data.cpu().numpy().shape
-        max_segm = max_segm.expand(rgb_size[0], 3, rgb_size[2], rgb_size[3]).float()
-        max_segm.data = (max_segm.data / 35.0 - 0.5) *2 # 35 classes
-        labels = img_data.get("data_lab")
-        if labels is not None:
-          labels = wrap_cuda(Variable(labels, volatile=False))
-          label_size = final_data.size()
-          labels = labels.expand(label_size).float()
-          labels.data = (labels.data / 35.0 - 0.5) *2
-          assembled_images = torch.cat((final_data, output_data[0], max_segm, labels), 3)
-        else:
+        grayscale = True
+        if grayscale:
+          rgb_size = max_segm.data.cpu().numpy().shape
+          max_segm = max_segm.expand(rgb_size[0], 3, rgb_size[2], rgb_size[3]).float()
+          max_segm.data = (max_segm.data / 35.0 - 0.5) *2 # 35 classes
           assembled_images = torch.cat((final_data, output_data[0], max_segm), 3)
+        else:
+          max_segm = max_segm.data.cpu().numpy()
+          max_segm_color = np.zeros((1, max_segm.shape[2], max_segm.shape[3], 3))
+          max_segm_color[0, :, :, :] = map_.convert_gray_to_color(max_segm[0, 0, :, :], False)
+          max_segm_color = np.moveaxis(max_segm_color, 3, 1)
+          max_segm_color = Variable(torch.from_numpy(max_segm_color).cuda().float())
+          print('Final data shape:')
+          print(final_data.size())
+          print('Output data[0] shape:')
+          print(output_data[0].size())
+          print('Max segm color shape:')
+          print(max_segm_color.shape)
+          assembled_images = torch.cat((final_data, output_data[0], max_segm_color), 3)
+
       else:
         assembled_images = torch.cat((final_data, output_data[0]), 3)
       torchvision.utils.save_image(assembled_images.data / 2.0 + 0.5, output_image_name)

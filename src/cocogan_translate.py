@@ -99,25 +99,37 @@ def main(argv):
         segm_image_out = segm_model.forward(output_data[0])[0]
         segm = torch.cat((segm_image_org, segm_image_out), 3)
         _, max_segm = torch.max(segm, dim=1, keepdim=True)
-        grayscale = True
+        labels = img_data.get("data_lab")
+        grayscale = False
         if grayscale:
           rgb_size = max_segm.data.cpu().numpy().shape
           max_segm = max_segm.expand(rgb_size[0], 3, rgb_size[2], rgb_size[3]).float()
           max_segm.data = (max_segm.data / 35.0 - 0.5) *2 # 35 classes
-          assembled_images = torch.cat((final_data, output_data[0], max_segm), 3)
+          if labels is not None:
+            labels = wrap_cuda(Variable(labels, volatile=False))
+            label_size = final_data.size()
+            labels = labels.expand(label_size).float()
+            labels.data = (labels.data / 35.0 - 0.5) * 2
+            assembled_images = torch.cat((final_data, output_data[0], max_segm, labels), 3)
+          else:
+            assembled_images = torch.cat((final_data, output_data[0], max_segm), 3)
         else:
           max_segm = max_segm.data.cpu().numpy()
           max_segm_color = np.zeros((1, max_segm.shape[2], max_segm.shape[3], 3))
           max_segm_color[0, :, :, :] = map_.convert_gray_to_color(max_segm[0, 0, :, :], False)
           max_segm_color = np.moveaxis(max_segm_color, 3, 1)
+          max_segm_color = (max_segm_color / 255 -0.5) * 2
           max_segm_color = Variable(torch.from_numpy(max_segm_color).cuda().float())
-          print('Final data shape:')
-          print(final_data.size())
-          print('Output data[0] shape:')
-          print(output_data[0].size())
-          print('Max segm color shape:')
-          print(max_segm_color.shape)
-          assembled_images = torch.cat((final_data, output_data[0], max_segm_color), 3)
+
+          if labels is not None:
+            labels_color = np.zeros((1, labels.shape[0], labels.shape[1], 3))
+            labels_color[0, :, :, :] = map_.convert_gray_to_color(labels, False)
+            labels_color = np.moveaxis(labels_color, 3, 1)
+            labels_color = (labels_color / 255 - 0.5) * 2
+            labels_color = Variable(torch.from_numpy(labels_color).cuda().float())
+            assembled_images = torch.cat((final_data, output_data[0], max_segm_color, labels_color), 3)
+          else:
+            assembled_images = torch.cat((final_data, output_data[0], max_segm_color), 3)
 
       else:
         assembled_images = torch.cat((final_data, output_data[0]), 3)

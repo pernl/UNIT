@@ -2,20 +2,21 @@
 # Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 train:
   snapshot_save_iterations: 5000 # How often do you want to save trained models
-  image_save_iterations: 2500 # How often do you want to save output images during training
-  image_display_iterations: 100
+  image_save_iterations: 1000 # How often do you want to save output images during training
+  image_display_iterations: 1000
   display: 1 # How often do you want to log the training stats
-  snapshot_prefix: /cosmo/projects/unit_release/outputs/unit_release/street_scene/day2night/day2night # Where do you want to save the outputs
+  snapshot_prefix: /staging/dadl/dummy_path # Where do you want to save the outputs
   hyperparameters:
     trainer: COCOGANTrainer
     lr: 0.0001             # learning rate
+    feedback_weight: 10  # weight on the feedback
     ll_direct_link_w: 100  # weight on the self L1 reconstruction loss
     kl_direct_link_w: 0.1 # weight on VAE encoding loss
     ll_cycle_link_w: 100   # weight on the cycle L1 reconstruction loss
     kl_cycle_link_w: 0.1  # weight on the cycle L1 reconstruction loss
     gan_w: 10              # weight on the adversarial loss
     batch_size: 1          # image batch size per domain
-    max_iterations: 500000 # maximum number of training epochs
+    max_iterations: 50000 # maximum number of training epochs
     gen:
       name: COCOResGen2
       ch: 64               # base channel number per layer
@@ -37,19 +38,23 @@ train:
   datasets:
     train_a: # Domain 1 dataset
       channels: 3       # image channel number
-      scale: 0.68        # scaling factor for scaling image before processing
-      crop_image_height: 480 # crop image size
-      crop_image_width: 640  # crop image size
-      class_name: dataset_image           # dataset class name
-      root: /cosmo/datasets/dashcam_refined/    # dataset folder location
-      folder: Sunny                      # image folder
-      list_name: Sunny/list_sunny.txt     # image list
+      scale: 0.6       # scaling factor for scaling image before processing
+      crop_image_height: 512 # crop image size
+      crop_image_width: 1024  # crop image size
+      class_name: dataset_image_label        # dataset class name
+      root: /workspace/dl-master-theses/dadl/third_party/UNIT/inference_source      # dataset folder location
+      root_lab: /workspace/dl-master-theses/dadl/third_party/UNIT/inference_source      # dataset folder location
+      folder: ./
+      list_name: img_list.txt  # image list no night 2018-04-30
+      list_name_lab: label_list.txt # label list no night 2018-04-30
     train_b: # Domain 2 dataset
       channels: 3       # image channel number
-      scale: 0.68        # scaling factor for scaling image before processing
-      crop_image_height: 480 # crop image size
-      crop_image_width: 640  # crop image size
-      class_name: dataset_image           # dataset class name
-      root: /cosmo/datasets/dashcam_refined/    # dataset folder location
-      folder: Night                      # image folder
-      list_name: Night/list_night.txt     # image list
+      scale: 0.6        # scaling factor for scaling image before processing
+      crop_image_height: 512 # crop image size
+      crop_image_width: 1024  # crop image size
+      class_name: dataset_image_label
+      root: /staging/dadddl/datasets/100/leftImg8bit/train/
+      root_lab: /staging/ddddadl/datasets/100/gtFine/train/
+      folder: ./
+      list_name: list_leftImg8bit.txt
+      list_name_lab: list_gtFine.txt

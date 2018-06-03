@@ -67,7 +67,10 @@ def main(argv):
   trainer = local_dict['trainer']
 
   map_ = CityscapesColorMap()
-  # Prepare network
+  xentropy_loss = torch.nn.NLLLoss2d(ignore_index=255)
+  segm_loss_org = None
+  segm_loss_out = None
+  #segm_loss_out =  Prepare network
   trainer.gen.load_state_dict(torch.load(opts.weights))
   trainer.cuda(opts.gpu)
   # trainer.gen.eval()
@@ -77,7 +80,7 @@ def main(argv):
 
   for ind in range(0, data.dataset_size):
     image_name = data.image_names[ind].rstrip() # rstrip removes trailing ws
-    print(image_name)
+    #print(image_name)
     img_data = data.__getitem__(ind, test=True)
     img = img_data['data']
     final_data = img.contiguous()
@@ -97,9 +100,15 @@ def main(argv):
       if opts.save_segm == 1:
         segm_image_org = segm_model.forward(final_data)[0]
         segm_image_out = segm_model.forward(output_data[0])[0]
+
+        labels = img_data.get("data_lab")
+        labels_cuda = wrap_cuda(Variable(labels, volatile=False))
+        labels_cuda.unsqueeze_(0)  # Add dummy dimension, not needed in train script, though
+        segm_loss_org = xentropy_loss(segm_image_org, labels_cuda).data[0]
+        segm_loss_out = xentropy_loss(segm_image_out, labels_cuda).data[0]
+
         segm = torch.cat((segm_image_org, segm_image_out), 3)
         _, max_segm = torch.max(segm, dim=1, keepdim=True)
-        labels = img_data.get("data_lab")
         grayscale = False
         if grayscale:
           rgb_size = max_segm.data.cpu().numpy().shape
@@ -107,6 +116,8 @@ def main(argv):
           max_segm.data = (max_segm.data / 35.0 - 0.5) *2 # 35 classes
           if labels is not None:
             labels = wrap_cuda(Variable(labels, volatile=False))
+            seg_loss_org = aba
+            segm_loss_out = 2
             label_size = final_data.size()
             labels = labels.expand(label_size).float()
             labels.data = (labels.data / 35.0 - 0.5) * 2
@@ -142,6 +153,7 @@ def main(argv):
       out_img = np.uint8(255 * (new_output_img / 2.0 + 0.5))
       out_img = cv2.cvtColor(out_img, cv2.COLOR_RGB2BGR)
       cv2.imwrite(output_image_name, out_img)
+    print('{}, Original: {}, Translated: {}'.format(image_name, segm_loss_org, segm_loss_out))
     del output_data
     del final_data
   return 0
